@@ -5,414 +5,595 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Stellar Spelling Portal</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Fredoka+One&display=swap" rel="stylesheet">
+
+<!-- ════════════════════════════════════════════
+     PASTE YOUR FIREBASE CONFIG BETWEEN THESE
+     SCRIPT TAGS (replace the placeholder below)
+     ════════════════════════════════════════════ -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, getDocs, deleteDoc }
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  // ▼▼▼ REPLACE THIS BLOCK WITH YOUR FIREBASE CONFIG ▼▼▼
+  const firebaseConfig = {
+    apiKey: "AIzaSyAswqUrvXc5ABpWPaYqrfo63lyJXI5R2Jw",
+    authDomain: "stellar-spelling.firebaseapp.com",
+    projectId: "stellar-spelling",
+    storageBucket: "stellar-spelling.firebasestorage.app",
+    messagingSenderId: "727590354624",
+    appId: "1:727590354624:web:d7226a40643c6ced37b725"
+  };
+  // ▲▲▲ END OF CONFIG BLOCK ▲▲▲
+
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
+  window._db = db;
+
+  // Expose Firestore helpers globally
+  window._fs = { doc, setDoc, getDoc, onSnapshot, collection, getDocs, deleteDoc };
+
+  // Live-listener for weekly data — all students see updates instantly
+  window._listenWeek = (group, term, week, cb) => {
+    const ref = doc(db, 'weekData', `${group}_T${term}_W${week}`);
+    return onSnapshot(ref, snap => cb(snap.exists() ? snap.data() : null));
+  };
+
+  // Save weekly data (admin)
+  window._saveWeek = async (group, term, week, data) => {
+    await setDoc(doc(db, 'weekData', `${group}_T${term}_W${week}`), data);
+  };
+
+  // Load all weeks for archive (admin)
+  window._loadArchive = async (group) => {
+    const snap = await getDocs(collection(db, 'weekData'));
+    const result = {};
+    snap.forEach(d => {
+      if (d.id.startsWith(group + '_')) result[d.id] = d.data();
+    });
+    return result;
+  };
+
+  // Student roster
+  window._saveRoster = async (data) => {
+    await setDoc(doc(db, 'config', 'roster'), data);
+  };
+  window._loadRoster = async () => {
+    const snap = await getDoc(doc(db, 'config', 'roster'));
+    return snap.exists() ? snap.data() : { comets:[], meteors:[], nebulas:[], rockets:[] };
+  };
+  window._listenRoster = (cb) => {
+    return onSnapshot(doc(db, 'config', 'roster'), snap => cb(snap.exists() ? snap.data() : { comets:[], meteors:[], nebulas:[], rockets:[] }));
+  };
+
+  // Student progress  — per student per group/term/week
+  window._saveProgress = async (studentId, group, term, week, stars, completedActivities) => {
+    await setDoc(doc(db, 'progress', `${studentId}_${group}_T${term}_W${week}`), { stars, completedActivities, studentId, group, term, week, updatedAt: Date.now() });
+  };
+  window._loadProgress = async (studentId, group, term, week) => {
+    const snap = await getDoc(doc(db, 'progress', `${studentId}_${group}_T${term}_W${week}`));
+    return snap.exists() ? snap.data() : { stars: 0, completedActivities: [] };
+  };
+  window._listenProgress = (studentId, group, term, week, cb) => {
+    const ref = doc(db, 'progress', `${studentId}_${group}_T${term}_W${week}`);
+    return onSnapshot(ref, snap => cb(snap.exists() ? snap.data() : { stars: 0, completedActivities: [] }));
+  };
+  // Load all students' progress for a group/week (admin view)
+  window._loadGroupProgress = async (group, term, week) => {
+    const snap = await getDocs(collection(db, 'progress'));
+    const result = {};
+    snap.forEach(d => {
+      if (d.id.includes(`_${group}_T${term}_W${week}`)) result[d.data().studentId] = d.data();
+    });
+    return result;
+  };
+
+  window._fbReady = true;
+  document.dispatchEvent(new Event('fbReady'));
+</script>
+
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --space-navy: #0d1b3e; --space-deep: #1a2d5a; --space-mid: #243b6e;
-    --accent-gold: #f5c842; --accent-teal: #4ecdc4; --accent-coral: #ff6b6b;
-    --accent-purple: #a855f7; --accent-green: #22c55e;
-    --text-primary: #f0f4ff; --text-secondary: #94a8d0;
-    --card-bg: rgba(26,45,90,0.85); --card-border: rgba(255,255,255,0.12);
-    --input-bg: rgba(13,27,62,0.8);
-    --font-display: 'Fredoka One', cursive; --font-body: 'Nunito', sans-serif;
-    --comets: #f5c842; --meteors: #ff6b6b; --nebulas: #a855f7; --rockets: #4ecdc4;
-  }
-  body { font-family: var(--font-body); background: var(--space-navy); color: var(--text-primary); min-height: 100vh; overflow-x: hidden; }
-  .stars-bg { position: fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0;
-    background: radial-gradient(ellipse at 20% 50%, rgba(168,85,247,0.08) 0%, transparent 60%),
-                radial-gradient(ellipse at 80% 20%, rgba(78,205,196,0.08) 0%, transparent 60%), var(--space-navy); }
-  .star { position:fixed; background:white; border-radius:50%; animation:twinkle 3s infinite; pointer-events:none; z-index:0; }
-  @keyframes twinkle { 0%,100%{opacity:0.3} 50%{opacity:1} }
-  #app { position:relative; z-index:1; min-height:100vh; display:flex; flex-direction:column; }
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#0d1b3e;--deep:#1a2d5a;--mid:#243b6e;
+  --gold:#f5c842;--teal:#4ecdc4;--coral:#ff6b6b;--purple:#a855f7;--green:#22c55e;--pink:#ec4899;
+  --txt:#f0f4ff;--txt2:#94a8d0;--card:rgba(26,45,90,0.88);--bdr:rgba(255,255,255,0.12);--inp:rgba(13,27,62,0.85);
+  --fd:'Fredoka One',cursive;--fb:'Nunito',sans-serif;
+  --comets:#f5c842;--meteors:#ff6b6b;--nebulas:#a855f7;--rockets:#4ecdc4;
+}
+body{font-family:var(--fb);background:var(--navy);color:var(--txt);min-height:100vh;overflow-x:hidden}
+.bg{position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse at 20% 50%,rgba(168,85,247,.08) 0%,transparent 60%),
+  radial-gradient(ellipse at 80% 20%,rgba(78,205,196,.08) 0%,transparent 60%),var(--navy)}
+.star{position:fixed;background:#fff;border-radius:50%;animation:twinkle 3s infinite;pointer-events:none;z-index:0}
+@keyframes twinkle{0%,100%{opacity:.3}50%{opacity:1}}
+#app{position:relative;z-index:1;min-height:100vh}
 
-  /* Header */
-  .portal-header { display:flex; align-items:center; justify-content:space-between; padding:14px 24px;
-    background:rgba(13,27,62,0.95); border-bottom:1px solid var(--card-border); position:sticky; top:0; z-index:100; flex-wrap:wrap; gap:10px; }
-  .portal-logo { font-family:var(--font-display); font-size:22px; color:var(--accent-gold); letter-spacing:1px; display:flex; align-items:center; gap:8px; }
-  .header-nav { display:flex; gap:6px; flex-wrap:wrap; }
-  .nav-btn { font-family:var(--font-body); font-weight:700; font-size:12px; padding:7px 14px; border-radius:20px;
-    border:1.5px solid var(--card-border); background:transparent; color:var(--text-secondary); cursor:pointer; transition:all 0.2s; }
-  .nav-btn:hover,.nav-btn.active { background:var(--accent-teal); border-color:var(--accent-teal); color:var(--space-navy); }
-  .nav-btn.admin-btn { border-color:var(--accent-gold); color:var(--accent-gold); }
-  .nav-btn.admin-btn:hover,.nav-btn.admin-btn.active { background:var(--accent-gold); color:var(--space-navy); }
+/* ── OVERLAYS ── */
+.overlay{display:none;position:fixed;inset:0;z-index:400;background:rgba(13,27,62,.97);align-items:center;justify-content:center;flex-direction:column}
+.overlay.show{display:flex}
+.modal{background:var(--card);border:1px solid var(--bdr);border-radius:20px;padding:36px;width:90%;max-width:400px;text-align:center}
+.modal-wide{max-width:560px}
+.modal h2{font-family:var(--fd);font-size:24px;color:var(--gold);margin-bottom:8px}
+.modal p{font-size:13px;color:var(--txt2);margin-bottom:20px}
+.modal-icon{font-size:48px;margin-bottom:8px}
+.lock-in{width:100%;background:var(--inp);border:2px solid var(--bdr);border-radius:12px;padding:14px;font-family:var(--fb);font-size:18px;font-weight:700;color:var(--txt);text-align:center;letter-spacing:4px;outline:none;margin-bottom:10px}
+.lock-in:focus{border-color:var(--gold)}
+.lock-err{color:var(--coral);font-size:13px;font-weight:700;min-height:18px;margin-bottom:10px}
 
-  /* Views */
-  .view { display:none; padding:24px; max-width:1100px; margin:0 auto; width:100%; }
-  .view.active { display:block; }
-  h2.view-title { font-family:var(--font-display); font-size:26px; color:var(--text-primary); margin-bottom:6px; }
-  .view-meta { font-size:13px; color:var(--text-secondary); margin-bottom:20px; }
+/* ── HEADER ── */
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:rgba(13,27,62,.96);border-bottom:1px solid var(--bdr);position:sticky;top:0;z-index:100;flex-wrap:wrap;gap:8px}
+.logo{font-family:var(--fd);font-size:20px;color:var(--gold);display:flex;align-items:center;gap:8px}
+.nav{display:flex;gap:5px;flex-wrap:wrap}
+.nb{font-family:var(--fb);font-weight:700;font-size:11px;padding:6px 12px;border-radius:18px;border:1.5px solid var(--bdr);background:transparent;color:var(--txt2);cursor:pointer;transition:all .2s}
+.nb:hover,.nb.active{background:var(--teal);border-color:var(--teal);color:var(--navy)}
+.nb.adm{border-color:var(--gold);color:var(--gold)}.nb.adm:hover,.nb.adm.active{background:var(--gold);color:var(--navy)}
 
-  /* Groups */
-  .group-selector { display:flex; gap:10px; margin-bottom:24px; flex-wrap:wrap; }
-  .group-pill { font-family:var(--font-display); font-size:15px; padding:10px 22px; border-radius:30px; border:2px solid; cursor:pointer; transition:all 0.2s; letter-spacing:0.5px; }
-  .group-pill.comets { border-color:var(--comets); color:var(--comets); }
-  .group-pill.comets.active,.group-pill.comets:hover { background:var(--comets); color:var(--space-navy); }
-  .group-pill.meteors { border-color:var(--meteors); color:var(--meteors); }
-  .group-pill.meteors.active,.group-pill.meteors:hover { background:var(--meteors); color:white; }
-  .group-pill.nebulas { border-color:var(--nebulas); color:var(--nebulas); }
-  .group-pill.nebulas.active,.group-pill.nebulas:hover { background:var(--nebulas); color:white; }
-  .group-pill.rockets { border-color:var(--rockets); color:var(--rockets); }
-  .group-pill.rockets.active,.group-pill.rockets:hover { background:var(--rockets); color:var(--space-navy); }
+/* student chip in header */
+.student-chip{display:flex;align-items:center;gap:8px;background:rgba(78,205,196,.12);border:1.5px solid var(--teal);border-radius:20px;padding:5px 12px 5px 6px;cursor:pointer;transition:all .2s}
+.student-chip:hover{background:rgba(78,205,196,.22)}
+.student-chip .ava{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;background:rgba(255,255,255,.1);flex-shrink:0}
+.student-chip .sname{font-size:12px;font-weight:800;color:var(--teal)}
+.student-chip .grp-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 
-  /* Term/Week */
-  .term-week-bar { display:flex; align-items:center; gap:16px; margin-bottom:20px; background:var(--card-bg);
-    border:1px solid var(--card-border); border-radius:14px; padding:12px 20px; flex-wrap:wrap; }
-  .tw-label { font-size:12px; color:var(--text-secondary); font-weight:700; text-transform:uppercase; letter-spacing:0.5px; }
-  .tw-pills { display:flex; gap:6px; flex-wrap:wrap; }
-  .tw-pill { font-size:13px; font-weight:700; padding:5px 12px; border-radius:20px; border:1.5px solid var(--card-border);
-    background:transparent; color:var(--text-secondary); cursor:pointer; transition:all 0.15s; }
-  .tw-pill:hover { border-color:var(--accent-teal); color:var(--accent-teal); }
-  .tw-pill.active { background:var(--accent-teal); border-color:var(--accent-teal); color:var(--space-navy); }
-  .tw-divider { width:1px; height:30px; background:var(--card-border); }
+/* ── VIEWS ── */
+.view{display:none;padding:20px;max-width:1100px;margin:0 auto;width:100%}
+.view.active{display:block}
+h2.vt{font-family:var(--fd);font-size:24px;color:var(--txt);margin-bottom:5px}
+.vm{font-size:13px;color:var(--txt2);margin-bottom:18px}
 
-  /* Cards */
-  .section-card { background:var(--card-bg); border:1px solid var(--card-border); border-radius:16px; padding:20px 24px; margin-bottom:20px; }
-  .section-title { font-family:var(--font-display); font-size:18px; color:var(--accent-gold); margin-bottom:4px; }
-  .section-sub { font-size:13px; color:var(--text-secondary); margin-bottom:16px; }
+/* ── STUDENT PICKER (login screen) ── */
+#view-login{display:block}
+.login-title{font-family:var(--fd);font-size:32px;color:var(--txt);text-align:center;margin-bottom:4px}
+.login-sub{font-size:14px;color:var(--txt2);text-align:center;margin-bottom:28px}
+.group-tabs{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:24px}
+.gtab{font-family:var(--fd);font-size:16px;padding:10px 24px;border-radius:30px;border:2px solid;cursor:pointer;transition:all .2s}
+.gtab.comets{border-color:var(--comets);color:var(--comets)}.gtab.comets.active,.gtab.comets:hover{background:var(--comets);color:var(--navy)}
+.gtab.meteors{border-color:var(--meteors);color:var(--meteors)}.gtab.meteors.active,.gtab.meteors:hover{background:var(--meteors);color:#fff}
+.gtab.nebulas{border-color:var(--nebulas);color:var(--nebulas)}.gtab.nebulas.active,.gtab.nebulas:hover{background:var(--nebulas);color:#fff}
+.gtab.rockets{border-color:var(--rockets);color:var(--rockets)}.gtab.rockets.active,.gtab.rockets:hover{background:var(--rockets);color:var(--navy)}
+.student-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:14px;max-width:700px;margin:0 auto 28px}
+.student-btn{background:var(--card);border:2px solid var(--bdr);border-radius:16px;padding:18px 12px;text-align:center;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:8px}
+.student-btn:hover{border-color:var(--teal);transform:translateY(-2px)}
+.s-avatar{width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto;border:2px solid rgba(255,255,255,.15)}
+.s-name{font-weight:800;font-size:13px;color:var(--txt)}
+.s-stars{font-size:11px;color:var(--gold);font-weight:700}
+.no-students{text-align:center;padding:40px;color:var(--txt2);font-size:14px}
 
-  /* Words */
-  .word-grid { display:flex; flex-wrap:wrap; gap:8px; }
-  .word-chip { font-weight:700; font-size:14px; padding:7px 16px; border-radius:20px;
-    background:rgba(78,205,196,0.15); border:1.5px solid var(--accent-teal); color:var(--accent-teal); cursor:pointer; transition:all 0.2s; }
-  .word-chip:hover { background:var(--accent-teal); color:var(--space-navy); }
-  .word-chip.custom { border-color:var(--accent-gold); color:var(--accent-gold); background:rgba(245,200,66,0.1); }
-  .word-chip.custom:hover { background:var(--accent-gold); color:var(--space-navy); }
+/* ── AVATAR PICKER ── */
+.avatar-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin:14px 0}
+.av-opt{font-size:32px;padding:10px;border-radius:12px;cursor:pointer;transition:all .15s;text-align:center;border:2px solid transparent}
+.av-opt:hover{background:rgba(255,255,255,.08)}.av-opt.selected{border-color:var(--gold);background:rgba(245,200,66,.15)}
 
-  /* Activities */
-  .activities-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:12px; }
-  .activity-card { background:var(--card-bg); border:1.5px solid var(--card-border); border-radius:14px; padding:18px 14px;
-    text-align:center; cursor:pointer; transition:all 0.2s; display:flex; flex-direction:column; align-items:center; gap:8px; }
-  .activity-card:hover { border-color:var(--accent-teal); transform:translateY(-2px); }
-  .activity-card:hover .activity-icon { transform:scale(1.1); }
-  .activity-icon { font-size:28px; transition:transform 0.2s; }
-  .activity-name { font-weight:700; font-size:13px; color:var(--text-primary); }
-  .activity-desc { font-size:11px; color:var(--text-secondary); line-height:1.4; }
+/* ── PROGRESS BAR ── */
+.progress-card{background:var(--card);border:1px solid var(--bdr);border-radius:16px;padding:18px 20px;margin-bottom:18px}
+.progress-header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.progress-avatar{width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;font-size:26px;border:2px solid rgba(255,255,255,.2);flex-shrink:0}
+.progress-name{font-family:var(--fd);font-size:18px;color:var(--txt)}
+.progress-group{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px}
+.stars-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.star-item{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;border:2px solid;transition:all .3s;cursor:default}
+.star-item.earned{border-color:var(--gold);background:rgba(245,200,66,.2)}
+.star-item.empty{border-color:rgba(255,255,255,.15);background:rgba(255,255,255,.04)}
+@keyframes starPop{0%{transform:scale(0.5);opacity:0}60%{transform:scale(1.3)}100%{transform:scale(1);opacity:1}}
+.star-item.new{animation:starPop .4s ease-out}
+.progress-label{font-size:13px;color:var(--txt2);font-weight:700}
+.activity-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.act-chip{font-size:11px;font-weight:800;padding:4px 10px;border-radius:10px;text-transform:uppercase}
+.act-chip.done{background:rgba(34,197,94,.15);color:var(--green);border:1px solid var(--green)}
+.act-chip.todo{background:rgba(255,255,255,.05);color:var(--txt2);border:1px solid var(--bdr)}
 
-  /* Game container */
-  .game-container { background:var(--card-bg); border:1px solid var(--card-border); border-radius:16px; padding:24px; min-height:340px; }
-  .game-title { font-family:var(--font-display); font-size:22px; color:var(--accent-teal); margin-bottom:6px; }
-  .game-sub { font-size:13px; color:var(--text-secondary); margin-bottom:20px; }
-  .scramble-word { font-family:var(--font-display); font-size:42px; color:var(--accent-gold); letter-spacing:8px; text-align:center; padding:20px; margin-bottom:16px; }
-  .game-input-row { display:flex; gap:10px; margin-bottom:14px; }
-  .game-input { flex:1; background:var(--input-bg); border:2px solid var(--card-border); border-radius:12px; padding:12px 16px;
-    font-family:var(--font-body); font-size:18px; font-weight:700; color:var(--text-primary); outline:none; }
-  .game-input:focus { border-color:var(--accent-teal); }
-  .game-btn { font-family:var(--font-body); font-weight:800; font-size:14px; padding:12px 20px; border-radius:12px; border:none; cursor:pointer; transition:all 0.15s; }
-  .game-btn.primary { background:var(--accent-teal); color:var(--space-navy); }
-  .game-btn.primary:hover { background:#3dbdb5; }
-  .game-btn.secondary { background:rgba(255,255,255,0.08); color:var(--text-secondary); border:1.5px solid var(--card-border); }
-  .game-feedback { text-align:center; font-family:var(--font-display); font-size:20px; padding:10px; border-radius:10px; margin-bottom:12px; }
-  .feedback-correct { background:rgba(34,197,94,0.2); color:var(--accent-green); }
-  .feedback-wrong { background:rgba(255,107,107,0.2); color:var(--accent-coral); }
-  .score-bar { display:flex; gap:16px; font-size:13px; color:var(--text-secondary); font-weight:700; }
-  .score-val { color:var(--accent-gold); font-size:18px; font-family:var(--font-display); }
+/* ── CARDS / GRIDS ── */
+.sc{background:var(--card);border:1px solid var(--bdr);border-radius:16px;padding:18px 22px;margin-bottom:18px}
+.st{font-family:var(--fd);font-size:18px;color:var(--gold);margin-bottom:4px}
+.ss{font-size:13px;color:var(--txt2);margin-bottom:14px}
+.twbar{display:flex;align-items:center;gap:14px;margin-bottom:18px;background:var(--card);border:1px solid var(--bdr);border-radius:14px;padding:11px 18px;flex-wrap:wrap}
+.twl{font-size:11px;color:var(--txt2);font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.twps{display:flex;gap:5px;flex-wrap:wrap}
+.twp{font-size:12px;font-weight:700;padding:4px 11px;border-radius:18px;border:1.5px solid var(--bdr);background:transparent;color:var(--txt2);cursor:pointer;transition:all .15s}
+.twp:hover{border-color:var(--teal);color:var(--teal)}.twp.active{background:var(--teal);border-color:var(--teal);color:var(--navy)}
+.twd{width:1px;height:28px;background:var(--bdr)}
+.ag{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:10px}
+.ac{background:var(--card);border:1.5px solid var(--bdr);border-radius:14px;padding:16px 12px;text-align:center;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:7px}
+.ac:hover{border-color:var(--teal);transform:translateY(-2px)}.ac:hover .ai{transform:scale(1.1)}
+.ai{font-size:26px;transition:transform .2s}.an{font-weight:700;font-size:12px;color:var(--txt)}.ad{font-size:10px;color:var(--txt2);line-height:1.4}
+.ac.completed{border-color:var(--green);background:rgba(34,197,94,.07)}
+.ac.completed::after{content:'✓';position:absolute;top:6px;right:8px;font-size:12px;color:var(--green);font-weight:900}
+.ac{position:relative}
 
-  /* Letter tiles */
-  .letter-tiles { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-bottom:16px; }
-  .letter-tile { width:44px; height:44px; border-radius:10px; border:2px solid var(--accent-purple);
-    background:rgba(168,85,247,0.15); color:var(--accent-purple); font-family:var(--font-display); font-size:22px;
-    display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all 0.15s; user-select:none; }
-  .letter-tile:hover { background:var(--accent-purple); color:white; }
-  .letter-tile.used { opacity:0.3; pointer-events:none; }
-  .build-display { min-height:52px; border-bottom:2.5px solid var(--accent-gold); display:flex; gap:6px;
-    align-items:center; justify-content:center; margin-bottom:14px; padding:6px; flex-wrap:wrap; }
-  .built-tile { width:44px; height:44px; border-radius:10px; background:rgba(245,200,66,0.2); border:2px solid var(--accent-gold);
-    color:var(--accent-gold); font-family:var(--font-display); font-size:22px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
-  .built-tile:hover { background:rgba(245,200,66,0.35); }
+/* ── GAME ── */
+.gc{background:var(--card);border:1px solid var(--bdr);border-radius:16px;padding:22px;min-height:320px}
+.gtit{font-family:var(--fd);font-size:21px;color:var(--teal);margin-bottom:5px}
+.gsub{font-size:13px;color:var(--txt2);margin-bottom:18px}
+.ginr{display:flex;gap:8px;margin-bottom:12px}
+.gin{flex:1;background:var(--inp);border:2px solid var(--bdr);border-radius:12px;padding:11px 14px;font-family:var(--fb);font-size:17px;font-weight:700;color:var(--txt);outline:none}
+.gin:focus{border-color:var(--teal)}
+.gbtn{font-family:var(--fb);font-weight:800;font-size:13px;padding:11px 18px;border-radius:12px;border:none;cursor:pointer;transition:all .15s}
+.gbtn.p{background:var(--teal);color:var(--navy)}.gbtn.p:hover{background:#3dbdb5}
+.gbtn.s{background:rgba(255,255,255,.07);color:var(--txt2);border:1.5px solid var(--bdr)}
+.gfb{text-align:center;font-family:var(--fd);font-size:19px;padding:9px;border-radius:10px;margin-bottom:10px}
+.ok{background:rgba(34,197,94,.2);color:var(--green)}.ng{background:rgba(255,107,107,.2);color:var(--coral)}
+.scb{display:flex;gap:14px;font-size:13px;color:var(--txt2);font-weight:700}
+.sv{color:var(--gold);font-size:17px;font-family:var(--fd)}
 
-  /* Syllables */
-  .syllable-word { font-family:var(--font-display); font-size:38px; color:var(--text-primary); text-align:center; margin-bottom:12px; }
-  .syllable-btns { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-bottom:14px; }
-  .syl-btn { font-weight:800; font-size:18px; padding:10px 24px; border-radius:12px; border:none; background:var(--accent-purple); color:white; cursor:pointer; transition:transform 0.1s; }
-  .syl-btn:active { transform:scale(0.94); }
+/* ── LETTER TILES ── */
+.lts{display:flex;gap:7px;flex-wrap:wrap;justify-content:center;margin-bottom:14px}
+.lt{width:42px;height:42px;border-radius:10px;border:2px solid var(--purple);background:rgba(168,85,247,.15);color:var(--purple);font-family:var(--fd);font-size:21px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;user-select:none}
+.lt:hover{background:var(--purple);color:#fff}.lt.used{opacity:.3;pointer-events:none}
+.bd{min-height:50px;border-bottom:2.5px solid var(--gold);display:flex;gap:5px;align-items:center;justify-content:center;margin-bottom:12px;padding:5px;flex-wrap:wrap}
+.bt{width:42px;height:42px;border-radius:10px;background:rgba(245,200,66,.2);border:2px solid var(--gold);color:var(--gold);font-family:var(--fd);font-size:21px;display:flex;align-items:center;justify-content:center;cursor:pointer}
 
-  /* Categorise */
-  .cat-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px; margin-bottom:16px; }
-  .cat-bucket { background:rgba(255,255,255,0.04); border:2px dashed var(--card-border); border-radius:14px; padding:12px; min-height:90px; transition:border-color 0.2s; }
-  .cat-bucket.drag-over { border-color:var(--accent-teal); background:rgba(78,205,196,0.08); }
-  .cat-bucket-title { font-weight:800; font-size:12px; color:var(--text-secondary); text-transform:uppercase; margin-bottom:8px; }
-  .cat-item { font-weight:700; font-size:13px; padding:5px 10px; background:rgba(168,85,247,0.15); border:1.5px solid var(--accent-purple);
-    border-radius:8px; color:var(--accent-purple); margin-bottom:4px; cursor:grab; user-select:none; }
+/* ── SYLLABLES ── */
+.sw{font-family:var(--fd);font-size:36px;color:var(--txt);text-align:center;margin-bottom:10px}
+.syb{font-weight:800;font-size:17px;padding:10px 22px;border-radius:12px;border:none;background:var(--purple);color:#fff;cursor:pointer;transition:transform .1s}
+.syb:active{transform:scale(.93)}
 
-  /* Memory */
-  .memory-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
-  .mem-card { aspect-ratio:1; border-radius:10px; border:2px solid var(--card-border); background:var(--space-mid); cursor:pointer;
-    display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-size:14px; font-weight:700;
-    color:var(--text-primary); transition:all 0.2s; text-align:center; padding:6px; user-select:none; }
-  .mem-card.flipped { background:rgba(78,205,196,0.2); border-color:var(--accent-teal); color:var(--accent-teal); }
-  .mem-card.matched { background:rgba(34,197,94,0.2); border-color:var(--accent-green); color:var(--accent-green); cursor:default; }
-  .mem-card.back { color:var(--space-mid); }
+/* ── CATEGORISE ── */
+.catg{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:14px}
+.catb{background:rgba(255,255,255,.03);border:2px dashed var(--bdr);border-radius:14px;padding:10px;min-height:80px;transition:border-color .2s}
+.catb.dov{border-color:var(--teal)}.cabt{font-weight:800;font-size:11px;color:var(--txt2);text-transform:uppercase;margin-bottom:6px}
+.cati{font-weight:700;font-size:12px;padding:4px 9px;background:rgba(168,85,247,.15);border:1.5px solid var(--purple);border-radius:7px;color:var(--purple);margin-bottom:3px;cursor:grab;user-select:none}
 
-  /* Custom word */
-  .custom-add-row { display:flex; gap:8px; margin-top:14px; }
-  .custom-input { flex:1; background:var(--input-bg); border:1.5px solid var(--card-border); border-radius:10px; padding:10px 14px;
-    font-family:var(--font-body); font-size:15px; font-weight:600; color:var(--text-primary); outline:none; }
-  .custom-input:focus { border-color:var(--accent-gold); }
-  .add-btn { padding:10px 18px; border-radius:10px; border:none; background:var(--accent-gold); color:var(--space-navy); font-weight:800; font-size:14px; cursor:pointer; }
+/* ── MEMORY ── */
+.mg{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.mc{aspect-ratio:1;border-radius:10px;border:2px solid var(--bdr);background:var(--mid);cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:13px;color:var(--txt);transition:all .2s;text-align:center;padding:5px;user-select:none}
+.mc.fl{background:rgba(78,205,196,.2);border-color:var(--teal);color:var(--teal)}
+.mc.mt{background:rgba(34,197,94,.2);border-color:var(--green);color:var(--green);cursor:default}.mc.bk{color:var(--mid)}
 
-  /* Admin */
-  .admin-grid { display:grid; grid-template-columns:280px 1fr; gap:20px; }
-  .admin-panel { background:var(--card-bg); border:1px solid var(--card-border); border-radius:16px; padding:20px; }
-  .admin-title { font-family:var(--font-display); font-size:16px; color:var(--accent-gold); margin-bottom:14px; }
-  .admin-group-row { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px; cursor:pointer; border:1.5px solid transparent; margin-bottom:6px; transition:all 0.15s; }
-  .admin-group-row:hover,.admin-group-row.active { background:rgba(255,255,255,0.05); border-color:var(--card-border); }
-  .admin-group-dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
-  .admin-group-name { font-weight:700; font-size:14px; }
-  .admin-group-count { font-size:11px; color:var(--text-secondary); margin-left:auto; }
-  .admin-form label { font-size:12px; color:var(--text-secondary); font-weight:700; text-transform:uppercase; display:block; margin-bottom:4px; margin-top:14px; }
-  .admin-input { width:100%; background:var(--input-bg); border:1.5px solid var(--card-border); border-radius:10px; padding:10px 14px;
-    font-family:var(--font-body); font-size:14px; font-weight:600; color:var(--text-primary); outline:none; }
-  .admin-input:focus { border-color:var(--accent-teal); }
-  .admin-textarea { width:100%; background:var(--input-bg); border:1.5px solid var(--card-border); border-radius:10px; padding:10px 14px;
-    font-family:var(--font-body); font-size:14px; font-weight:600; color:var(--text-primary); outline:none; resize:vertical; min-height:80px; }
-  .admin-textarea:focus { border-color:var(--accent-teal); }
-  .admin-save-btn { margin-top:16px; width:100%; padding:12px; border-radius:12px; border:none; background:var(--accent-teal); color:var(--space-navy); font-weight:800; font-size:15px; cursor:pointer; }
-  .admin-save-btn:hover { background:#3dbdb5; }
-  .archive-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(68px,1fr)); gap:6px; margin-top:10px; }
-  .archive-item { padding:8px 10px; border-radius:10px; border:1.5px solid var(--card-border); background:transparent; cursor:pointer; text-align:center; transition:all 0.15s; }
-  .archive-item:hover,.archive-item.has-data { border-color:var(--accent-teal); }
-  .archive-item .arc-term { font-size:10px; color:var(--text-secondary); font-weight:700; }
-  .archive-item .arc-week { font-family:var(--font-display); font-size:14px; color:var(--text-primary); }
-  .archive-item.has-data .arc-week { color:var(--accent-teal); }
-  .task-row { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px; border:1.5px solid var(--card-border); margin-bottom:6px; background:rgba(255,255,255,0.03); }
-  .task-check { width:18px; height:18px; border-radius:5px; border:2px solid var(--accent-teal); cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; transition:all 0.15s; }
-  .task-check.checked { background:var(--accent-teal); }
-  .task-check.checked::after { content:'✓'; font-size:11px; color:var(--space-navy); font-weight:900; }
-  .task-label { font-size:13px; font-weight:600; flex:1; }
-  .task-group-badge { font-size:10px; font-weight:800; padding:3px 8px; border-radius:8px; text-transform:uppercase; }
+/* ── FIND THE SOUND ── */
+.fts-badge{font-family:var(--fd);font-size:20px;padding:7px 18px;border-radius:28px;background:rgba(245,200,66,.15);border:2px solid var(--gold);color:var(--gold);letter-spacing:1px;display:inline-block;margin-bottom:12px}
+.fts-passage{font-family:var(--fb);font-size:16px;line-height:2.1;padding:16px;background:rgba(255,255,255,.04);border:1.5px solid var(--bdr);border-radius:14px;margin-bottom:12px;user-select:text}
+.fts-passage span.hl{background:var(--gold);color:var(--navy);border-radius:4px;padding:1px 3px;font-weight:800;cursor:pointer;transition:all .15s}
+.fts-passage span.hl:hover{background:#e8bb30}
+.fts-passage span.word{cursor:pointer;border-radius:4px;padding:1px 3px;transition:background .15s}
+.fts-passage span.word:hover{background:rgba(78,205,196,.2)}
+.fts-stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.fts-stat{font-size:12px;font-weight:700;padding:5px 12px;border-radius:9px}
+.fts-stat.g{background:rgba(245,200,66,.15);color:var(--gold);border:1px solid var(--gold)}
+.fts-stat.t{background:rgba(78,205,196,.15);color:var(--teal);border:1px solid var(--teal)}
+.fts-stat.c{background:rgba(255,107,107,.15);color:var(--coral);border:1px solid var(--coral)}
+.fts-ta{width:100%;background:var(--inp);border:2px solid var(--bdr);border-radius:12px;padding:14px;font-family:var(--fb);font-size:15px;font-weight:600;color:var(--txt);outline:none;resize:vertical;min-height:100px;line-height:1.7}
+.fts-ta:focus{border-color:var(--teal)}
+.fts-mb{font-family:var(--fb);font-weight:700;font-size:11px;padding:5px 12px;border-radius:14px;border:1.5px solid var(--bdr);background:transparent;color:var(--txt2);cursor:pointer;transition:all .15s}
+.fts-mb.active{background:var(--teal);border-color:var(--teal);color:var(--navy)}
 
-  /* Misc */
-  .progress-row { display:flex; align-items:center; gap:6px; margin-top:12px; }
-  .progress-star { font-size:18px; }
-  .badge { display:inline-block; font-size:11px; font-weight:800; padding:4px 10px; border-radius:10px; text-transform:uppercase; letter-spacing:0.4px; }
-  .badge-teal { background:rgba(78,205,196,0.15); color:var(--accent-teal); border:1px solid var(--accent-teal); }
-  .badge-gold { background:rgba(245,200,66,0.15); color:var(--accent-gold); border:1px solid var(--accent-gold); }
-  .badge-coral { background:rgba(255,107,107,0.15); color:var(--accent-coral); border:1px solid var(--accent-coral); }
-  .badge-purple { background:rgba(168,85,247,0.15); color:var(--accent-purple); border:1px solid var(--accent-purple); }
-  .toast { position:fixed; bottom:24px; right:24px; z-index:999; background:var(--space-deep); border:1.5px solid var(--accent-teal);
-    border-radius:12px; padding:12px 20px; font-weight:700; font-size:14px; color:var(--accent-teal);
-    transform:translateY(80px); opacity:0; transition:all 0.3s; pointer-events:none; }
-  .toast.show { transform:translateY(0); opacity:1; }
-  .flex-row { display:flex; align-items:center; gap:10px; }
-  .spacer { flex:1; }
-  .two-col { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-  @media(max-width:700px) { .two-col{grid-template-columns:1fr;} .admin-grid{grid-template-columns:1fr;} .memory-grid{grid-template-columns:repeat(3,1fr);} }
+/* ── WORD LIST / CUSTOM ── */
+.wg{display:flex;flex-wrap:wrap;gap:7px}
+.wc{font-weight:700;font-size:13px;padding:6px 14px;border-radius:18px;background:rgba(78,205,196,.13);border:1.5px solid var(--teal);color:var(--teal);cursor:pointer;transition:all .2s}
+.wc:hover{background:var(--teal);color:var(--navy)}
+.wc.cust{border-color:var(--gold);color:var(--gold);background:rgba(245,200,66,.08)}.wc.cust:hover{background:var(--gold);color:var(--navy)}
+.car{display:flex;gap:7px;margin-top:12px}
+.ci{flex:1;background:var(--inp);border:1.5px solid var(--bdr);border-radius:10px;padding:9px 12px;font-family:var(--fb);font-size:14px;font-weight:600;color:var(--txt);outline:none}
+.ci:focus{border-color:var(--gold)}.ab{padding:9px 16px;border-radius:10px;border:none;background:var(--gold);color:var(--navy);font-weight:800;font-size:13px;cursor:pointer}
+
+/* ── ADMIN ── */
+.admg{display:grid;grid-template-columns:260px 1fr;gap:18px}
+.admp{background:var(--card);border:1px solid var(--bdr);border-radius:16px;padding:18px}
+.admt{font-family:var(--fd);font-size:15px;color:var(--gold);margin-bottom:12px}
+.admgr{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:10px;cursor:pointer;border:1.5px solid transparent;margin-bottom:5px;transition:all .15s}
+.admgr:hover,.admgr.active{background:rgba(255,255,255,.05);border-color:var(--bdr)}
+.admgd{width:11px;height:11px;border-radius:50%;flex-shrink:0}
+.admgn{font-weight:700;font-size:13px}.admgc{font-size:10px;color:var(--txt2);margin-left:auto}
+.admf label{font-size:11px;color:var(--txt2);font-weight:700;text-transform:uppercase;display:block;margin-bottom:3px;margin-top:12px}
+.admi{width:100%;background:var(--inp);border:1.5px solid var(--bdr);border-radius:10px;padding:9px 12px;font-family:var(--fb);font-size:13px;font-weight:600;color:var(--txt);outline:none}
+.admi:focus{border-color:var(--teal)}
+.admta{width:100%;background:var(--inp);border:1.5px solid var(--bdr);border-radius:10px;padding:9px 12px;font-family:var(--fb);font-size:13px;font-weight:600;color:var(--txt);outline:none;resize:vertical;min-height:72px}
+.admta:focus{border-color:var(--teal)}
+.admsb{margin-top:14px;width:100%;padding:11px;border-radius:12px;border:none;background:var(--teal);color:var(--navy);font-weight:800;font-size:14px;cursor:pointer}
+.admsb:hover{background:#3dbdb5}
+.arcg{display:grid;grid-template-columns:repeat(auto-fill,minmax(60px,1fr));gap:5px;margin-top:8px}
+.arci{padding:7px 8px;border-radius:9px;border:1.5px solid var(--bdr);cursor:pointer;text-align:center;transition:all .15s}
+.arci:hover,.arci.hd{border-color:var(--teal)}.arci .at{font-size:9px;color:var(--txt2);font-weight:700}.arci .aw{font-family:var(--fd);font-size:13px;color:var(--txt)}.arci.hd .aw{color:var(--teal)}
+.trow{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:10px;border:1.5px solid var(--bdr);margin-bottom:5px;background:rgba(255,255,255,.03)}
+.tck{width:17px;height:17px;border-radius:5px;border:2px solid var(--teal);cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.tck.ck{background:var(--teal)}.tck.ck::after{content:'✓';font-size:10px;color:var(--navy);font-weight:900}
+.tlbl{font-size:12px;font-weight:600;flex:1}
+.tgb{font-size:9px;font-weight:800;padding:3px 7px;border-radius:7px;text-transform:uppercase}
+
+/* ── ROSTER EDITOR ── */
+.roster-in-row{display:flex;gap:7px;margin-top:8px}
+.roster-in{flex:1;background:var(--inp);border:1.5px solid var(--bdr);border-radius:9px;padding:8px 12px;font-family:var(--fb);font-size:13px;font-weight:600;color:var(--txt);outline:none}
+.roster-in:focus{border-color:var(--teal)}
+.roster-btn{padding:8px 14px;border-radius:9px;border:none;background:var(--teal);color:var(--navy);font-weight:800;font-size:12px;cursor:pointer}
+.roster-list{margin-top:10px;display:flex;flex-direction:column;gap:5px}
+.roster-row{display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(255,255,255,.04);border-radius:9px;border:1px solid var(--bdr)}
+.roster-ava{font-size:20px}.roster-name{font-size:13px;font-weight:700;flex:1}
+.roster-del{font-size:11px;padding:3px 9px;border-radius:7px;border:1px solid var(--coral);color:var(--coral);background:transparent;cursor:pointer}
+.roster-del:hover{background:var(--coral);color:#fff}
+
+/* ── ADMIN PROGRESS TABLE ── */
+.prog-table{width:100%;border-collapse:collapse;font-size:13px}
+.prog-table th{font-size:11px;font-weight:800;color:var(--txt2);text-transform:uppercase;padding:6px 10px;border-bottom:1px solid var(--bdr);text-align:left}
+.prog-table td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.05)}
+.prog-mini-stars{display:flex;gap:3px}
+.prog-star{font-size:13px}
+
+/* ── MISC ── */
+.badge{display:inline-block;font-size:11px;font-weight:800;padding:4px 10px;border-radius:9px;text-transform:uppercase;letter-spacing:.3px}
+.bt-t{background:rgba(78,205,196,.15);color:var(--teal);border:1px solid var(--teal)}
+.bt-g{background:rgba(245,200,66,.15);color:var(--gold);border:1px solid var(--gold)}
+.bt-c{background:rgba(255,107,107,.15);color:var(--coral);border:1px solid var(--coral)}
+.bt-p{background:rgba(168,85,247,.15);color:var(--purple);border:1px solid var(--purple)}
+.toast{position:fixed;bottom:22px;right:22px;z-index:999;background:var(--deep);border:1.5px solid var(--teal);border-radius:12px;padding:11px 18px;font-weight:700;font-size:13px;color:var(--teal);transform:translateY(80px);opacity:0;transition:all .3s;pointer-events:none}
+.toast.show{transform:translateY(0);opacity:1}
+.fr{display:flex;align-items:center;gap:9px}.sp{flex:1}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.scrmw{font-family:var(--fd);font-size:38px;color:var(--gold);letter-spacing:7px;text-align:center;padding:16px;margin-bottom:14px}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--green);margin-left:4px;display:inline-block;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+@media(max-width:700px){.two{grid-template-columns:1fr}.admg{grid-template-columns:1fr}.mg{grid-template-columns:repeat(3,1fr)}.avatar-grid{grid-template-columns:repeat(5,1fr)}}
 </style>
 </head>
 <body>
-<div class="stars-bg" id="starsBg"></div>
-<div id="app">
+<div class="bg" id="bg"></div>
 
+<!-- ADMIN LOCK -->
+<div class="overlay" id="adm-lock">
+  <div class="modal">
+    <div class="modal-icon">🔐</div>
+    <h2>Admin Access</h2>
+    <p>Enter the admin password to continue</p>
+    <input class="lock-in" id="lock-pw" type="password" placeholder="••••••••" maxlength="20" autocomplete="off">
+    <div class="lock-err" id="lock-err"></div>
+    <button class="gbtn p" style="width:100%;padding:13px;font-size:15px" onclick="checkPw()">Unlock →</button>
+    <div style="margin-top:12px"><button class="gbtn s" onclick="hideLock()" style="font-size:12px;padding:7px 14px">Cancel</button></div>
+  </div>
+</div>
+
+<!-- AVATAR PICKER -->
+<div class="overlay" id="av-picker">
+  <div class="modal modal-wide">
+    <div class="modal-icon" id="av-preview">🐶</div>
+    <h2>Choose Your Avatar</h2>
+    <p>Pick the animal that represents you!</p>
+    <div class="avatar-grid" id="av-grid"></div>
+    <button class="gbtn p" style="width:100%;padding:12px;font-size:14px;margin-top:4px" onclick="saveAvatar()">Save Avatar ✓</button>
+    <div style="margin-top:10px"><button class="gbtn s" onclick="document.getElementById('av-picker').classList.remove('show')" style="font-size:12px;padding:7px 14px">Cancel</button></div>
+  </div>
+</div>
+
+<!-- STAR CELEBRATION -->
+<div class="overlay" id="star-celebrate">
+  <div class="modal" style="text-align:center">
+    <div style="font-size:64px;margin-bottom:8px" id="cel-icon">⭐</div>
+    <h2 id="cel-title">You earned a star!</h2>
+    <p id="cel-msg">Keep up the amazing work!</p>
+    <button class="gbtn p" style="width:100%;padding:12px;margin-top:8px" onclick="document.getElementById('star-celebrate').classList.remove('show')">Keep Going! 🚀</button>
+  </div>
+</div>
+
+<div id="app">
   <!-- HEADER -->
-  <header class="portal-header">
-    <div class="portal-logo">🚀 Stellar Spelling</div>
-    <nav class="header-nav">
-      <button class="nav-btn active" onclick="showView('home')">🏠 Home</button>
-      <button class="nav-btn" onclick="showView('words')">📚 Words</button>
-      <button class="nav-btn" onclick="showView('activities')">🎮 Activities</button>
-      <button class="nav-btn" onclick="showView('games')">⭐ Games</button>
-      <button class="nav-btn admin-btn" onclick="showView('admin')">⚙️ Admin</button>
+  <header class="hdr">
+    <div class="logo">🚀 Stellar Spelling <span class="sync-dot" id="sync-dot" style="display:none" title="Live sync active"></span></div>
+    <nav class="nav">
+      <button class="nb" id="nb-home" onclick="showView('home')">🏠 Home</button>
+      <button class="nb" id="nb-words" onclick="showView('words')">📚 Words</button>
+      <button class="nb" id="nb-activities" onclick="showView('activities')">🎮 Activities</button>
+      <button class="nb" id="nb-games" onclick="showView('games')">⭐ Games</button>
+      <button class="nb adm" id="nb-admin" onclick="adminAccess()">⚙️ Admin</button>
     </nav>
+    <div id="student-hdr"></div>
   </header>
 
+  <!-- LOGIN / STUDENT PICKER -->
+  <div class="view active" id="view-login" style="padding-top:40px">
+    <div class="login-title">🚀 Stellar Spelling</div>
+    <p class="login-sub">Choose your group, then tap your name to begin!</p>
+    <div class="group-tabs" id="login-tabs">
+      <div class="gtab comets active" onclick="loginSelGroup('comets',this)">☄️ Comets</div>
+      <div class="gtab meteors" onclick="loginSelGroup('meteors',this)">🌠 Meteors</div>
+      <div class="gtab nebulas" onclick="loginSelGroup('nebulas',this)">🌌 Nebulas</div>
+      <div class="gtab rockets" onclick="loginSelGroup('rockets',this)">🚀 Rockets</div>
+    </div>
+    <div class="student-grid" id="student-grid">
+      <div class="no-students">Loading students...</div>
+    </div>
+    <div style="text-align:center;margin-top:10px">
+      <button class="nb adm" onclick="adminAccess()" style="font-size:12px">⚙️ Teacher Admin</button>
+    </div>
+  </div>
+
   <!-- HOME -->
-  <div class="view active" id="view-home">
-    <h2 class="view-title">Welcome, Spellers! 🌟</h2>
-    <p class="view-meta">Choose your group to get started with this week's spelling mission.</p>
-    <div class="group-selector">
-      <div class="group-pill comets active" onclick="selectGroup('comets',this)">☄️ Comets</div>
-      <div class="group-pill meteors" onclick="selectGroup('meteors',this)">🌠 Meteors</div>
-      <div class="group-pill nebulas" onclick="selectGroup('nebulas',this)">🌌 Nebulas</div>
-      <div class="group-pill rockets" onclick="selectGroup('rockets',this)">🚀 Rockets</div>
-    </div>
-    <div class="term-week-bar">
-      <span class="tw-label">Term</span>
-      <div class="tw-pills" id="term-pills">
-        <button class="tw-pill active" onclick="selectTerm(1,this)">T1</button>
-        <button class="tw-pill" onclick="selectTerm(2,this)">T2</button>
-        <button class="tw-pill" onclick="selectTerm(3,this)">T3</button>
-        <button class="tw-pill" onclick="selectTerm(4,this)">T4</button>
+  <div class="view" id="view-home">
+    <div id="progress-block"></div>
+    <div class="twbar">
+      <span class="twl">Term</span>
+      <div class="twps" id="term-pills">
+        <button class="twp active" onclick="selT(1,this)">T1</button>
+        <button class="twp" onclick="selT(2,this)">T2</button>
+        <button class="twp" onclick="selT(3,this)">T3</button>
+        <button class="twp" onclick="selT(4,this)">T4</button>
       </div>
-      <div class="tw-divider"></div>
-      <span class="tw-label">Week</span>
-      <div class="tw-pills" id="week-pills"></div>
+      <div class="twd"></div>
+      <span class="twl">Week</span>
+      <div class="twps" id="week-pills"></div>
     </div>
-    <div class="two-col">
-      <div class="section-card">
-        <div class="section-title" id="focus-title">This Week's Focus ✨</div>
-        <div class="section-sub" id="focus-sub">Loading...</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;" id="focus-badges"></div>
+    <div class="two">
+      <div class="sc">
+        <div class="st" id="focus-title">This Week's Focus ✨</div>
+        <div class="ss" id="focus-sub">Loading...</div>
+        <div style="display:flex;gap:7px;flex-wrap:wrap" id="focus-badges"></div>
       </div>
-      <div class="section-card">
-        <div class="section-title">Your Progress 🏆</div>
-        <div class="section-sub">Keep going — you're doing great!</div>
-        <div class="progress-row">
-          <span class="progress-star">⭐</span><span class="progress-star">⭐</span><span class="progress-star">⭐</span>
-          <span class="progress-star" style="opacity:0.3">⭐</span><span class="progress-star" style="opacity:0.3">⭐</span>
-          <span style="font-size:12px;color:var(--text-secondary);font-weight:700;margin-left:4px">3 / 5 done</span>
+      <div class="sc">
+        <div class="st">Quick Launch 🎯</div>
+        <div class="ss" style="margin-bottom:12px">Jump into any activity</div>
+        <div style="display:flex;flex-wrap:wrap;gap:7px">
+          <button class="gbtn p" style="font-size:12px;padding:8px 14px" onclick="launch('findsound')">🔎 Find Sound</button>
+          <button class="gbtn p" style="font-size:12px;padding:8px 14px" onclick="launch('scramble')">🔀 Scramble</button>
+          <button class="gbtn p" style="font-size:12px;padding:8px 14px" onclick="launch('memory')">🃏 Memory</button>
+          <button class="gbtn s" style="font-size:12px;padding:8px 14px" onclick="showView('activities')">All Activities →</button>
         </div>
-        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
-          <span class="badge badge-teal">Scramble ✓</span>
-          <span class="badge badge-gold">Builder ✓</span>
-          <span class="badge badge-coral">Memory — next!</span>
-        </div>
-      </div>
-    </div>
-    <div class="section-card">
-      <div class="section-title">Quick Launch 🎯</div>
-      <div class="section-sub" style="margin-bottom:16px">Jump straight into an activity</div>
-      <div class="activities-grid">
-        <div class="activity-card" onclick="launchActivity('scramble')"><div class="activity-icon">🔀</div><div class="activity-name">Word Scramble</div><div class="activity-desc">Unscramble letters to spell it right</div></div>
-        <div class="activity-card" onclick="launchActivity('builder')"><div class="activity-icon">🧱</div><div class="activity-name">Word Builder</div><div class="activity-desc">Tap tiles to build words</div></div>
-        <div class="activity-card" onclick="launchActivity('syllables')"><div class="activity-icon">👏</div><div class="activity-name">Syllables</div><div class="activity-desc">Clap and count syllables</div></div>
-        <div class="activity-card" onclick="launchActivity('categorise')"><div class="activity-icon">🗂️</div><div class="activity-name">Categorise</div><div class="activity-desc">Sort words into groups</div></div>
-        <div class="activity-card" onclick="launchActivity('memory')"><div class="activity-icon">🃏</div><div class="activity-name">Memory Match</div><div class="activity-desc">Match word pairs</div></div>
-        <div class="activity-card" onclick="launchActivity('missing')"><div class="activity-icon">🔍</div><div class="activity-name">Missing Letters</div><div class="activity-desc">Fill in the blanks</div></div>
-        <div class="activity-card" onclick="launchActivity('breaker')"><div class="activity-icon">✂️</div><div class="activity-name">Word Breaker</div><div class="activity-desc">Break into syllables</div></div>
-        <div class="activity-card" onclick="launchActivity('joiner')"><div class="activity-icon">🔗</div><div class="activity-name">Word Joiner</div><div class="activity-desc">Join parts to make words</div></div>
       </div>
     </div>
   </div>
 
   <!-- WORDS -->
   <div class="view" id="view-words">
-    <h2 class="view-title">📚 Word Lists</h2>
-    <p class="view-meta">This week's word list for your group. Add custom words below!</p>
-    <div class="group-selector" id="words-group-selector">
-      <div class="group-pill comets active" onclick="selectGroupWords('comets',this)">☄️ Comets</div>
-      <div class="group-pill meteors" onclick="selectGroupWords('meteors',this)">🌠 Meteors</div>
-      <div class="group-pill nebulas" onclick="selectGroupWords('nebulas',this)">🌌 Nebulas</div>
-      <div class="group-pill rockets" onclick="selectGroupWords('rockets',this)">🚀 Rockets</div>
+    <h2 class="vt">📚 Word List</h2>
+    <p class="vm">This week's words. Add your own custom words below!</p>
+    <div class="sc">
+      <div class="fr" style="margin-bottom:10px"><div class="st" style="margin-bottom:0">Assigned Words</div><div class="sp"></div><span class="badge bt-t" id="wc-badge">0 words</span></div>
+      <div class="wg" id="main-wl"></div>
     </div>
-    <div class="section-card">
-      <div class="flex-row" style="margin-bottom:12px;">
-        <div class="section-title" style="margin-bottom:0">Assigned Words</div>
-        <div class="spacer"></div>
-        <span class="badge badge-teal" id="word-count-badge">0 words</span>
-      </div>
-      <div class="word-grid" id="main-word-list"></div>
-    </div>
-    <div class="section-card">
-      <div class="section-title">Custom Words ⭐</div>
-      <div class="section-sub">Add your own words to practise</div>
-      <div class="word-grid" id="custom-word-list"></div>
-      <div class="custom-add-row">
-        <input class="custom-input" id="custom-word-input" placeholder="Type a word..." maxlength="30">
-        <button class="add-btn" onclick="addCustomWord()">+ Add</button>
-      </div>
+    <div class="sc">
+      <div class="st">Custom Words ⭐</div>
+      <div class="ss">Add your own words to practise</div>
+      <div class="wg" id="cust-wl"></div>
+      <div class="car"><input class="ci" id="cust-in" placeholder="Type a word..." maxlength="30"><button class="ab" onclick="addCust()">+ Add</button></div>
     </div>
   </div>
 
   <!-- ACTIVITIES -->
   <div class="view" id="view-activities">
-    <h2 class="view-title">🎮 Activities</h2>
-    <p class="view-meta">Click any activity to start practising your spelling words.</p>
-    <div class="activities-grid" style="margin-bottom:20px;">
-      <div class="activity-card" onclick="launchActivity('scramble')"><div class="activity-icon">🔀</div><div class="activity-name">Word Scramble</div><div class="activity-desc">Unscramble to spell it</div></div>
-      <div class="activity-card" onclick="launchActivity('builder')"><div class="activity-icon">🧱</div><div class="activity-name">Word Builder</div><div class="activity-desc">Tap tiles to build words</div></div>
-      <div class="activity-card" onclick="launchActivity('syllables')"><div class="activity-icon">👏</div><div class="activity-name">Syllables</div><div class="activity-desc">Clap and count syllables</div></div>
-      <div class="activity-card" onclick="launchActivity('categorise')"><div class="activity-icon">🗂️</div><div class="activity-name">Categorise</div><div class="activity-desc">Sort by sound pattern</div></div>
-      <div class="activity-card" onclick="launchActivity('memory')"><div class="activity-icon">🃏</div><div class="activity-name">Memory Match</div><div class="activity-desc">Flip and match pairs</div></div>
-      <div class="activity-card" onclick="launchActivity('missing')"><div class="activity-icon">🔍</div><div class="activity-name">Missing Letters</div><div class="activity-desc">Fill in the blanks</div></div>
-      <div class="activity-card" onclick="launchActivity('breaker')"><div class="activity-icon">✂️</div><div class="activity-name">Word Breaker</div><div class="activity-desc">Break into syllables</div></div>
-      <div class="activity-card" onclick="launchActivity('joiner')"><div class="activity-icon">🔗</div><div class="activity-name">Word Joiner</div><div class="activity-desc">Combine into words</div></div>
-      <div class="activity-card" onclick="launchActivity('sentences')"><div class="activity-icon">✏️</div><div class="activity-name">Sentence Write</div><div class="activity-desc">Use words in sentences</div></div>
+    <h2 class="vt">🎮 Activities</h2>
+    <p class="vm">Complete activities to earn ⭐ stars! Each completed activity = 1 star.</p>
+    <div class="ag" style="margin-bottom:18px" id="activities-grid">
+      <div class="ac" id="ac-findsound" onclick="launch('findsound')"><div class="ai">🔎</div><div class="an">Find the Sound</div><div class="ad">Highlight the focus sound</div></div>
+      <div class="ac" id="ac-scramble" onclick="launch('scramble')"><div class="ai">🔀</div><div class="an">Word Scramble</div><div class="ad">Unscramble letters</div></div>
+      <div class="ac" id="ac-builder" onclick="launch('builder')"><div class="ai">🧱</div><div class="an">Word Builder</div><div class="ad">Tap tiles to build</div></div>
+      <div class="ac" id="ac-syllables" onclick="launch('syllables')"><div class="ai">👏</div><div class="an">Syllables</div><div class="ad">Clap and count</div></div>
+      <div class="ac" id="ac-categorise" onclick="launch('categorise')"><div class="ai">🗂️</div><div class="an">Categorise</div><div class="ad">Sort by pattern</div></div>
+      <div class="ac" id="ac-memory" onclick="launch('memory')"><div class="ai">🃏</div><div class="an">Memory Match</div><div class="ad">Flip and pair</div></div>
+      <div class="ac" id="ac-missing" onclick="launch('missing')"><div class="ai">🔍</div><div class="an">Missing Letters</div><div class="ad">Fill in blanks</div></div>
+      <div class="ac" id="ac-breaker" onclick="launch('breaker')"><div class="ai">✂️</div><div class="an">Word Breaker</div><div class="ad">Break into syllables</div></div>
+      <div class="ac" id="ac-joiner" onclick="launch('joiner')"><div class="ai">🔗</div><div class="an">Word Joiner</div><div class="ad">Combine into words</div></div>
+      <div class="ac" id="ac-sentences" onclick="launch('sentences')"><div class="ai">✏️</div><div class="an">Sentence Write</div><div class="ad">Use words in sentences</div></div>
     </div>
-    <div class="game-container" id="game-container">
-      <div style="text-align:center;padding:40px 0;color:var(--text-secondary)">
-        <div style="font-size:48px;margin-bottom:12px">🎮</div>
-        <div style="font-family:var(--font-display);font-size:20px">Pick an activity above to begin!</div>
-      </div>
+    <div class="gc" id="game-container">
+      <div style="text-align:center;padding:36px 0;color:var(--txt2)"><div style="font-size:44px;margin-bottom:10px">🎮</div><div style="font-family:var(--fd);font-size:18px">Pick an activity above to begin!</div></div>
     </div>
   </div>
 
   <!-- GAMES -->
   <div class="view" id="view-games">
-    <h2 class="view-title">⭐ Spelling Games</h2>
-    <p class="view-meta">Fun games powered by your word list!</p>
-    <div class="two-col" style="margin-bottom:20px;">
-      <div class="section-card" style="cursor:pointer" onclick="launchActivity('scramble');showView('activities')">
-        <div class="flex-row"><span style="font-size:36px">🔀</span>
-          <div><div class="section-title" style="margin-bottom:2px">Scramble Challenge</div><div class="section-sub" style="margin-bottom:0">Race to unscramble words</div></div>
-        </div>
-        <div style="margin-top:10px;display:flex;gap:6px;"><span class="badge badge-teal">All levels</span><span class="badge badge-gold">Timed</span></div>
+    <h2 class="vt">⭐ Spelling Games</h2>
+    <p class="vm">Fun games powered by your word list — earn stars as you go!</p>
+    <div class="two">
+      <div class="sc" style="cursor:pointer" onclick="launch('scramble');showView('activities')">
+        <div class="fr"><span style="font-size:32px">🔀</span><div><div class="st" style="margin-bottom:2px">Scramble</div><div class="ss" style="margin-bottom:0">Race to unscramble</div></div></div>
+        <div style="margin-top:8px;display:flex;gap:6px"><span class="badge bt-t">All levels</span></div>
       </div>
-      <div class="section-card" style="cursor:pointer" onclick="launchActivity('memory');showView('activities')">
-        <div class="flex-row"><span style="font-size:36px">🃏</span>
-          <div><div class="section-title" style="margin-bottom:2px">Memory Match</div><div class="section-sub" style="margin-bottom:0">Flip to match words</div></div>
-        </div>
-        <div style="margin-top:10px;display:flex;gap:6px;"><span class="badge badge-purple">Memory</span><span class="badge badge-coral">8–12</span></div>
+      <div class="sc" style="cursor:pointer" onclick="launch('findsound');showView('activities')">
+        <div class="fr"><span style="font-size:32px">🔎</span><div><div class="st" style="margin-bottom:2px">Find the Sound</div><div class="ss" style="margin-bottom:0">Hunt the pattern</div></div></div>
+        <div style="margin-top:8px;display:flex;gap:6px"><span class="badge bt-g">All groups</span></div>
       </div>
-      <div class="section-card" style="cursor:pointer" onclick="launchActivity('missing');showView('activities')">
-        <div class="flex-row"><span style="font-size:36px">🔍</span>
-          <div><div class="section-title" style="margin-bottom:2px">Missing Letters</div><div class="section-sub" style="margin-bottom:0">Crack the code!</div></div>
-        </div>
-        <div style="margin-top:10px;display:flex;gap:6px;"><span class="badge badge-teal">8–10</span><span class="badge badge-gold">Extension</span></div>
+      <div class="sc" style="cursor:pointer" onclick="launch('memory');showView('activities')">
+        <div class="fr"><span style="font-size:32px">🃏</span><div><div class="st" style="margin-bottom:2px">Memory Match</div><div class="ss" style="margin-bottom:0">Flip and match</div></div></div>
+        <div style="margin-top:8px;display:flex;gap:6px"><span class="badge bt-p">Memory</span></div>
       </div>
-      <div class="section-card" style="cursor:pointer" onclick="launchActivity('builder');showView('activities')">
-        <div class="flex-row"><span style="font-size:36px">🧱</span>
-          <div><div class="section-title" style="margin-bottom:2px">Word Builder</div><div class="section-sub" style="margin-bottom:0">Tap tiles to construct</div></div>
-        </div>
-        <div style="margin-top:10px;display:flex;gap:6px;"><span class="badge badge-purple">Builder</span><span class="badge badge-teal">All groups</span></div>
+      <div class="sc" style="cursor:pointer" onclick="launch('missing');showView('activities')">
+        <div class="fr"><span style="font-size:32px">🔍</span><div><div class="st" style="margin-bottom:2px">Missing Letters</div><div class="ss" style="margin-bottom:0">Fill in blanks</div></div></div>
+        <div style="margin-top:8px;display:flex;gap:6px"><span class="badge bt-c">Challenge</span></div>
       </div>
     </div>
   </div>
 
   <!-- ADMIN -->
   <div class="view" id="view-admin">
-    <h2 class="view-title">⚙️ Admin Panel</h2>
-    <p class="view-meta">Assign spelling tasks, manage word lists, and set weekly focuses.</p>
-    <div class="admin-grid">
-      <div>
-        <div class="admin-panel" style="margin-bottom:16px;">
-          <div class="admin-title">👥 Groups</div>
-          <div id="admin-groups-list">
-            <div class="admin-group-row active" onclick="adminSelectGroup('comets',this)"><div class="admin-group-dot" style="background:var(--comets)"></div><span class="admin-group-name">Comets</span><span class="admin-group-count">Year 3–4</span></div>
-            <div class="admin-group-row" onclick="adminSelectGroup('meteors',this)"><div class="admin-group-dot" style="background:var(--meteors)"></div><span class="admin-group-name">Meteors</span><span class="admin-group-count">Year 3–4</span></div>
-            <div class="admin-group-row" onclick="adminSelectGroup('nebulas',this)"><div class="admin-group-dot" style="background:var(--nebulas)"></div><span class="admin-group-name">Nebulas</span><span class="admin-group-count">Year 5–6</span></div>
-            <div class="admin-group-row" onclick="adminSelectGroup('rockets',this)"><div class="admin-group-dot" style="background:var(--rockets)"></div><span class="admin-group-name">Rockets</span><span class="admin-group-count">Extension</span></div>
+    <div class="fr" style="margin-bottom:14px">
+      <h2 class="vt" style="margin-bottom:0">⚙️ Admin Panel</h2>
+      <div class="sp"></div>
+      <button class="gbtn s" onclick="lockAdmin()" style="font-size:11px;padding:6px 12px">🔒 Lock</button>
+    </div>
+
+    <!-- TABS inside admin -->
+    <div style="display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap">
+      <button class="twp active" id="adm-tab-content" onclick="admTab('content')">📚 Content</button>
+      <button class="twp" id="adm-tab-roster" onclick="admTab('roster')">👥 Students</button>
+      <button class="twp" id="adm-tab-progress" onclick="admTab('progress')">⭐ Progress</button>
+    </div>
+
+    <!-- CONTENT TAB -->
+    <div id="adm-content-panel">
+      <div class="admg">
+        <div>
+          <div class="admp" style="margin-bottom:14px">
+            <div class="admt">Groups</div>
+            <div id="adm-grps">
+              <div class="admgr active" onclick="admSelG('comets',this)"><div class="admgd" style="background:var(--comets)"></div><span class="admgn">Comets</span><span class="admgc">Year 3–4</span></div>
+              <div class="admgr" onclick="admSelG('meteors',this)"><div class="admgd" style="background:var(--meteors)"></div><span class="admgn">Meteors</span><span class="admgc">Year 3–4</span></div>
+              <div class="admgr" onclick="admSelG('nebulas',this)"><div class="admgd" style="background:var(--nebulas)"></div><span class="admgn">Nebulas</span><span class="admgc">Year 5–6</span></div>
+              <div class="admgr" onclick="admSelG('rockets',this)"><div class="admgd" style="background:var(--rockets)"></div><span class="admgn">Rockets</span><span class="admgc">Extension</span></div>
+            </div>
+          </div>
+          <div class="admp">
+            <div class="admt">Archive</div>
+            <div style="display:flex;gap:5px;margin-bottom:8px;flex-wrap:wrap" id="adm-t-btns">
+              <button class="twp active" onclick="admSelT(1,this)">T1</button>
+              <button class="twp" onclick="admSelT(2,this)">T2</button>
+              <button class="twp" onclick="admSelT(3,this)">T3</button>
+              <button class="twp" onclick="admSelT(4,this)">T4</button>
+            </div>
+            <div class="arcg" id="adm-arc"></div>
           </div>
         </div>
-        <div class="admin-panel">
-          <div class="admin-title">📅 Archive — Pick a Week</div>
-          <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;" id="admin-term-btns">
-            <button class="tw-pill active" onclick="adminSelectTerm(1,this)">T1</button>
-            <button class="tw-pill" onclick="adminSelectTerm(2,this)">T2</button>
-            <button class="tw-pill" onclick="adminSelectTerm(3,this)">T3</button>
-            <button class="tw-pill" onclick="adminSelectTerm(4,this)">T4</button>
+        <div>
+          <div class="admp" style="margin-bottom:14px">
+            <div class="admt">Assign Focus — <span id="adm-lbl" style="color:var(--comets)">Comets</span> <span id="adm-week-lbl" style="font-size:12px;color:var(--txt2)">T1 W1</span></div>
+            <div class="admf">
+              <label>Spelling Sound / Focus</label>
+              <input class="admi" id="adm-focus" placeholder="e.g. /igh/ sound — long i">
+              <label>Word List (one per line)</label>
+              <textarea class="admta" id="adm-words" rows="5"></textarea>
+              <label>Sample Passage (for Find the Sound)</label>
+              <textarea class="admta" id="adm-passage" rows="3" placeholder="Paste a passage containing the focus sound..."></textarea>
+              <label>Teacher Notes</label>
+              <textarea class="admta" id="adm-notes" rows="2" placeholder="Notes visible to students..."></textarea>
+            </div>
+            <button class="admsb" onclick="admSave()">💾 Save &amp; Push Live</button>
+            <div id="adm-save-status" style="font-size:12px;color:var(--green);margin-top:8px;min-height:18px"></div>
           </div>
-          <div class="archive-grid" id="admin-archive-grid"></div>
+          <div class="admp">
+            <div class="admt">Assigned Activities</div>
+            <div style="font-size:11px;color:var(--txt2);margin-bottom:10px">Toggle active activities for this group</div>
+            <div id="adm-tasks"></div>
+          </div>
         </div>
       </div>
-      <div>
-        <div class="admin-panel" style="margin-bottom:16px;">
-          <div class="admin-title">📝 Assign Spelling Focus — <span id="admin-selected-label" style="color:var(--comets)">Comets</span></div>
-          <div class="admin-form">
-            <label>Spelling Sound / Focus</label>
-            <input class="admin-input" id="admin-focus" placeholder="e.g. /igh/ sound — long i" value="Long vowel /oa/ — 'oa' and 'ow' patterns">
-            <label>Word List (one per line)</label>
-            <textarea class="admin-textarea" id="admin-wordlist" rows="6">road
-coat
-show
-below
-float
-groan
-elbow
-narrow
-shadow
-throat
-rainbow
-window</textarea>
-            <label>Teacher Notes (optional)</label>
-            <textarea class="admin-textarea" id="admin-notes" rows="3" placeholder="Notes for students or parents...">Focus on how 'oa' (middle of words) and 'ow' (end of words) make the same /oa/ sound.</textarea>
-          </div>
-          <button class="admin-save-btn" onclick="adminSave()">💾 Save & Assign</button>
+    </div>
+
+    <!-- ROSTER TAB -->
+    <div id="adm-roster-panel" style="display:none">
+      <div class="two">
+        <div class="admp">
+          <div class="admt">☄️ Comets</div>
+          <div class="roster-in-row"><input class="roster-in" id="ri-comets" placeholder="Student name..."><button class="roster-btn" onclick="addStudent('comets')">+ Add</button></div>
+          <div class="roster-list" id="rl-comets"></div>
         </div>
-        <div class="admin-panel">
-          <div class="admin-title">✅ Assigned Activities</div>
-          <div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">Toggle which activities are active for the selected group this week</div>
-          <div class="tasks-list" id="admin-tasks-list"></div>
+        <div class="admp">
+          <div class="admt">🌠 Meteors</div>
+          <div class="roster-in-row"><input class="roster-in" id="ri-meteors" placeholder="Student name..."><button class="roster-btn" onclick="addStudent('meteors')">+ Add</button></div>
+          <div class="roster-list" id="rl-meteors"></div>
         </div>
+        <div class="admp">
+          <div class="admt">🌌 Nebulas</div>
+          <div class="roster-in-row"><input class="roster-in" id="ri-nebulas" placeholder="Student name..."><button class="roster-btn" onclick="addStudent('nebulas')">+ Add</button></div>
+          <div class="roster-list" id="rl-nebulas"></div>
+        </div>
+        <div class="admp">
+          <div class="admt">🚀 Rockets</div>
+          <div class="roster-in-row"><input class="roster-in" id="ri-rockets" placeholder="Student name..."><button class="roster-btn" onclick="addStudent('rockets')">+ Add</button></div>
+          <div class="roster-list" id="rl-rockets"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROGRESS TAB -->
+    <div id="adm-progress-panel" style="display:none">
+      <div class="sc">
+        <div class="st">Class Progress Snapshot</div>
+        <div class="ss">Stars earned this week per student</div>
+        <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+          <select id="prog-group-sel" onchange="loadProgView()" style="background:var(--inp);border:1.5px solid var(--bdr);color:var(--txt);border-radius:9px;padding:6px 12px;font-family:var(--fb);font-size:13px;font-weight:700;outline:none">
+            <option value="comets">☄️ Comets</option>
+            <option value="meteors">🌠 Meteors</option>
+            <option value="nebulas">🌌 Nebulas</option>
+            <option value="rockets">🚀 Rockets</option>
+          </select>
+          <span style="font-size:12px;color:var(--txt2);align-self:center">T<span id="prog-t-lbl">1</span> W<span id="prog-w-lbl">1</span></span>
+        </div>
+        <div id="prog-view"><div style="color:var(--txt2);font-size:13px;padding:20px 0">Select a group to view progress</div></div>
       </div>
     </div>
   </div>
@@ -421,360 +602,764 @@ window</textarea>
 <div class="toast" id="toast"></div>
 
 <script>
-const STATE = { group:'comets', term:1, week:1, customWords:[], adminGroup:'comets', adminTerm:1, adminWeek:1 };
+const ADMIN_PW = '34zflps2026';
+let adminUnlocked = false;
 
-const DATA = {
-  comets: {
-    1: {
-      1: { focus:'Long vowel /oa/ — "oa" and "ow" patterns', words:['road','coat','show','below','float','groan','elbow','narrow','shadow','throat','rainbow','window'], notes:'"oa" sits in the middle, "ow" at the end' },
-      2: { focus:'Suffix -tion', words:['action','nation','station','mention','fraction','section','caption','fiction','motion','notion','lotion','potion'], notes:'Words ending in -tion make a "shun" sound' },
-      3: { focus:'/ee/ spelled "ea"', words:['beach','teach','dream','scream','reach','clean','heat','feast','steam','stream','cheap','wheat'], notes:'Many /ee/ sounds are spelled with "ea"' }
-    },
-    2: { 1: { focus:'Prefix un-', words:['unhappy','undo','unlike','unpack','unfair','untie','unsafe','unlock','unclear','unwell'], notes:'"un-" means not or opposite' } },
-    3: { 1: { focus:'Homophones', words:['there','their','hear','here','wear','where','bare','bear','no','know'], notes:'Same sound, different meaning and spelling' } },
-    4: { 1: { focus:'/or/ sound variations', words:['floor','door','more','four','pour','war','ward','torch','sport','short','sword','towards'], notes:'"or", "oor", "our", "aw" all make /or/' } }
-  },
-  meteors: {
-    1: {
-      1: { focus:'/igh/ — long "i" patterns', words:['light','might','night','right','sight','tight','bright','flight','fright','knight','slight','delight'], notes:'"igh" makes the long /i/ sound' },
-      2: { focus:'Compound words', words:['sunflower','football','bedroom','rainbow','birthday','outside','starfish','doorbell','earring','lighthouse'], notes:'Two words joined to make one new word' }
-    },
-    2: { 1: { focus:'Suffix -ing', words:['running','jumping','hopping','sitting','making','taking','having','writing','coming','going','playing','singing'], notes:'Double consonant when adding -ing to short vowel words' } },
-    3: {}, 4: {}
-  },
-  nebulas: {
-    1: {
-      1: { focus:'Greek roots: graph, phon, scope', words:['photograph','phonics','telescope','microscope','autograph','biography','geography','microphone','saxophone','stethoscope'], notes:'Understanding roots helps decode unknown words' },
-      2: { focus:'Prefixes: mis-, dis-, pre-', words:['misread','disappear','preview','misspell','distrust','prepare','misplace','dislike','predict','mislead'], notes:'These prefixes change the meaning of base words' }
-    },
-    2: { 1: { focus:'Silent letters', words:['kneel','wrench','gnome','knight','wrist','knuckle','wrapped','gnaw','knife','wrong','knowledge','wrestle'], notes:'Some letters are there but we do not say them' } },
-    3: {}, 4: {}
-  },
-  rockets: {
-    1: {
-      1: { focus:'Latin roots: port, rupt, aud', words:['transport','disrupt','audible','import','export','interrupt','inaudible','report','auditorium','eruption','portable','audience'], notes:'Latin roots give us clues to word meanings' },
-      2: { focus:'Homophones + homographs', words:['stationary','stationery','principal','principle','affect','effect','complement','compliment','desert','dessert'], notes:'These tricky pairs confuse even adults!' }
-    },
-    2: { 1: { focus:'Unstressed vowels (schwa)', words:['Wednesday','different','interesting','separate','company','boundary','category','factory','dictionary','original'], notes:'The schwa vowel sound is very common in unstressed syllables' } },
-    3: {}, 4: {}
-  }
-};
+const ANIMALS = ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🐔','🐧','🐦','🦆','🦅','🦉','🦋','🐢','🦎','🐬','🦈','🐙','🦄','🐲','🦕'];
 
-const SYLLABLE_MAP = {road:1,coat:1,show:1,below:2,float:1,groan:1,elbow:2,narrow:2,shadow:2,throat:1,rainbow:2,window:2,light:1,might:1,night:1,right:1,bright:1,delight:2,action:2,nation:2,station:3,mention:2,fraction:2,photograph:3,telescope:3,microscope:3,biography:4,geography:4,transport:2,disrupt:2,audible:3,interrupt:3,Wednesday:3,different:3,interesting:4,separate:3,running:2,jumping:2,hopping:2,sitting:2};
-const BREAK_MAP = {road:'road',coat:'coat',show:'show',below:'be·low',float:'float',groan:'groan',elbow:'el·bow',narrow:'nar·row',shadow:'sha·dow',throat:'throat',rainbow:'rain·bow',window:'win·dow',action:'ac·tion',station:'sta·tion',mention:'men·tion',fraction:'frac·tion',photograph:'pho·to·graph',telescope:'tel·e·scope',microscope:'mi·cro·scope',biography:'bi·og·ra·phy',transport:'trans·port',interrupt:'in·ter·rupt',Wednesday:'Wed·nes·day',different:'dif·fer·ent',interesting:'in·ter·est·ing',separate:'sep·a·rate'};
+const SYLMAP = {road:1,coat:1,show:1,below:2,float:1,groan:1,elbow:2,narrow:2,shadow:2,throat:1,rainbow:2,window:2,light:1,might:1,night:1,right:1,bright:1,delight:2,action:2,nation:2,station:3,mention:2,fraction:2,photograph:3,telescope:3,microscope:3,biography:4,geography:4,transport:2,disrupt:2,audible:3,interrupt:3,Wednesday:3,different:3,interesting:4,separate:3,running:2,jumping:2,hopping:2,sitting:2};
+const BRKMAP = {road:'road',coat:'coat',show:'show',below:'be·low',float:'float',groan:'groan',elbow:'el·bow',narrow:'nar·row',shadow:'sha·dow',throat:'throat',rainbow:'rain·bow',window:'win·dow',action:'ac·tion',station:'sta·tion',mention:'men·tion',fraction:'frac·tion',photograph:'pho·to·graph',telescope:'tel·e·scope',microscope:'mi·cro·scope',biography:'bi·og·ra·phy',transport:'trans·port',interrupt:'in·ter·rupt',Wednesday:'Wed·nes·day',different:'dif·fer·ent',interesting:'in·ter·est·ing',separate:'sep·a·rate'};
 
-function getWeekData(){ return DATA[STATE.group]?.[STATE.term]?.[STATE.week]||null; }
-function getSpellWords(){ const d=getWeekData(); const base=d?d.words:['road','coat','show','below','float','groan','elbow','narrow','shadow','throat']; return [...base,...STATE.customWords]; }
+const ACT_NAMES = {findsound:'Find the Sound',scramble:'Word Scramble',builder:'Word Builder',syllables:'Syllables',categorise:'Categorise',memory:'Memory Match',missing:'Missing Letters',breaker:'Word Breaker',joiner:'Word Joiner',sentences:'Sentence Write'};
+const ACT_ICONS = {findsound:'🔎',scramble:'🔀',builder:'🧱',syllables:'👏',categorise:'🗂️',memory:'🃏',missing:'🔍',breaker:'✂️',joiner:'🔗',sentences:'✏️'};
 
+// App state
+let S = { group:'comets', term:1, week:1, customWords:[], adminGroup:'comets', adminTerm:1, adminWeek:1 };
+let currentStudent = null; // { id, name, group, avatar }
+let currentProgress = { stars:0, completedActivities:[] };
+let currentWeekData = null;
+let weekListener = null;
+let progressListener = null;
+let rosterListener = null;
+let rosterData = { comets:[], meteors:[], nebulas:[], rockets:[] };
+let loginGroup = 'comets';
+let loginGroupProgress = {};
+let avPickerStudent = null;
+let avSelected = null;
+
+// ── STARS ──
 function initStars(){
-  const bg=document.getElementById('starsBg');
-  for(let i=0;i<60;i++){
-    const s=document.createElement('div'); s.className='star';
-    const sz=Math.random()*2.5+0.5;
-    s.style.cssText=`width:${sz}px;height:${sz}px;top:${Math.random()*100}%;left:${Math.random()*100}%;animation-delay:${Math.random()*3}s;animation-duration:${2+Math.random()*3}s`;
-    bg.appendChild(s);
+  const bg=document.getElementById('bg');
+  for(let i=0;i<55;i++){const s=document.createElement('div');s.className='star';const sz=Math.random()*2.5+.5;s.style.cssText=`width:${sz}px;height:${sz}px;top:${Math.random()*100}%;left:${Math.random()*100}%;animation-delay:${Math.random()*3}s;animation-duration:${2+Math.random()*3}s`;bg.appendChild(s);}
+}
+
+// ── FIREBASE READY ──
+document.addEventListener('fbReady', () => {
+  document.getElementById('sync-dot').style.display = 'inline-block';
+  startRosterListener();
+});
+// Fallback if Firebase not configured
+setTimeout(() => {
+  if (!window._fbReady) {
+    showFirebaseSetup();
   }
-}
+}, 3000);
 
-function showView(v){
-  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active'));
-  document.getElementById('view-'+v).classList.add('active');
-  const map={home:'Home',words:'Words',activities:'Activities',games:'Games',admin:'Admin'};
-  document.querySelectorAll('.nav-btn').forEach(b=>{ if(b.textContent.includes(map[v])) b.classList.add('active'); });
-  if(v==='home') renderHome();
-  if(v==='words') renderWords();
-  if(v==='admin') renderAdmin();
-}
-
-function renderWeekPills(id, cb, active){
-  const c=document.getElementById(id); c.innerHTML='';
-  for(let i=1;i<=11;i++){
-    const b=document.createElement('button'); b.className='tw-pill'+(i===active?' active':''); b.textContent='W'+i;
-    b.onclick=()=>cb(i,b); c.appendChild(b);
-  }
-}
-
-function selectTerm(t,el){
-  STATE.term=t; STATE.week=1;
-  document.querySelectorAll('#term-pills .tw-pill').forEach(p=>p.classList.remove('active')); el.classList.add('active');
-  renderWeekPills('week-pills',(w,b)=>{ STATE.week=w; document.querySelectorAll('#week-pills .tw-pill').forEach(p=>p.classList.remove('active')); b.classList.add('active'); renderHome(); },1);
-  renderHome();
-}
-
-function selectGroup(g,el){
-  STATE.group=g; document.querySelectorAll('#view-home .group-pill').forEach(p=>p.classList.remove('active')); el.classList.add('active'); renderHome();
-}
-function selectGroupWords(g,el){
-  STATE.group=g; document.querySelectorAll('#words-group-selector .group-pill').forEach(p=>p.classList.remove('active')); el.classList.add('active'); renderWords();
-}
-
-function renderHome(){
-  const d=getWeekData();
-  document.getElementById('focus-title').textContent='Term '+STATE.term+' · Week '+STATE.week+' ✨';
-  document.getElementById('focus-sub').textContent=d?d.focus:'No focus assigned yet — check back soon!';
-  document.getElementById('focus-badges').innerHTML=d?`<span class="badge badge-teal">${d.words.length} words</span><span class="badge badge-gold">${STATE.group}</span>${d.notes?'<span class="badge badge-coral" style="font-size:10px;margin-top:4px">'+d.notes+'</span>':''}`:'<span class="badge badge-coral">Pending</span>';
-}
-
-function renderWords(){
-  const d=getWeekData(); const words=d?d.words:[];
-  document.getElementById('word-count-badge').textContent=words.length+' words';
-  const wl=document.getElementById('main-word-list'); wl.innerHTML='';
-  words.forEach(w=>{ const c=document.createElement('div'); c.className='word-chip'; c.textContent=w; wl.appendChild(c); });
-  renderCustomWords();
-}
-function renderCustomWords(){
-  const cl=document.getElementById('custom-word-list'); cl.innerHTML='';
-  STATE.customWords.forEach((w,i)=>{ const c=document.createElement('div'); c.className='word-chip custom'; c.textContent=w+' ✕'; c.onclick=()=>{ STATE.customWords.splice(i,1); renderCustomWords(); }; cl.appendChild(c); });
-}
-function addCustomWord(){
-  const inp=document.getElementById('custom-word-input'); const w=inp.value.trim().toLowerCase();
-  if(w&&!STATE.customWords.includes(w)){ STATE.customWords.push(w); renderCustomWords(); showToast('Word added: '+w); } inp.value='';
-}
-
-function launchActivity(id){
-  STATE.activeGame=id; showView('activities');
-  const c=document.getElementById('game-container'); const words=getSpellWords();
-  if(!words.length){ c.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-secondary)">No words yet! Assign a word list in Admin.</div>'; return; }
-  if(id==='scramble') renderScramble(c,words);
-  else if(id==='builder') renderBuilder(c,words);
-  else if(id==='syllables') renderSyllables(c,words);
-  else if(id==='memory') renderMemory(c,words);
-  else if(id==='missing') renderMissing(c,words);
-  else if(id==='categorise') renderCategorise(c,words);
-  else if(id==='breaker') renderBreaker(c,words);
-  else if(id==='joiner') renderJoiner(c,words);
-  else if(id==='sentences') renderSentences(c,words);
-}
-
-/* SCRAMBLE */
-function renderScramble(c,words){
-  let idx=Math.floor(Math.random()*words.length),score=0,tried=0;
-  const scramble=w=>w.split('').sort(()=>Math.random()-0.5).join('');
-  function render(){
-    const word=words[idx%words.length];
-    c.innerHTML=`<div class="game-title">🔀 Word Scramble</div><div class="game-sub">Unscramble the letters to spell the word!</div>
-    <div class="score-bar" style="margin-bottom:16px">Score: <span class="score-val">${score}</span>&nbsp;&nbsp;Tried: <span class="score-val">${tried}</span><span style="margin-left:auto;color:var(--text-secondary)">${idx%words.length+1}/${words.length}</span></div>
-    <div class="scramble-word">${scramble(word).toUpperCase()}</div>
-    <div id="sc-fb" style="min-height:44px"></div>
-    <div class="game-input-row"><input class="game-input" id="sc-in" placeholder="Type your answer..." autocomplete="off"><button class="game-btn primary" onclick="chkSc('${word}',${words.length})">Check ✓</button><button class="game-btn secondary" onclick="nxtSc(${words.length})">Skip →</button></div>`;
-    setTimeout(()=>{ const i=document.getElementById('sc-in'); if(i){i.focus();i.onkeydown=e=>{if(e.key==='Enter')chkSc(word,words.length);};} },50);
-  }
-  window.chkSc=(w,len)=>{ const i=document.getElementById('sc-in'),fb=document.getElementById('sc-fb'),ans=i.value.trim().toLowerCase(); tried++; if(ans===w){score++;fb.innerHTML=`<div class="game-feedback feedback-correct">🎉 Correct! "${w}"</div>`;i.value='';idx++;setTimeout(render,1100);}else{fb.innerHTML=`<div class="game-feedback feedback-wrong">❌ Try again!</div>`;i.value='';i.focus();} };
-  window.nxtSc=(len)=>{ idx=(idx+1)%len; render(); };
-  render();
-}
-
-/* BUILDER */
-function renderBuilder(c,words){
-  let idx=0;
-  function render(){
-    const word=words[idx%words.length]; const letters=word.split('').sort(()=>Math.random()-0.5);
-    let used=new Array(letters.length).fill(false),built=[];
-    function refresh(){
-      document.getElementById('bl-tiles').innerHTML=letters.map((l,i)=>`<div class="letter-tile${used[i]?' used':''}" onclick="blTap(${i})">${l.toUpperCase()}</div>`).join('');
-      document.getElementById('bl-built').innerHTML=built.map((item,i)=>`<div class="built-tile" onclick="blRm(${i})">${item.l.toUpperCase()}</div>`).join('');
-    }
-    c.innerHTML=`<div class="game-title">🧱 Word Builder</div><div class="game-sub">Tap letters in order to spell: <b style="color:var(--accent-gold)">${word.length} letters</b></div>
-    <div id="sc-fb" style="min-height:44px;margin-bottom:8px"></div>
-    <div class="build-display" id="bl-built"></div><div class="letter-tiles" id="bl-tiles"></div>
-    <div style="display:flex;gap:10px;margin-top:16px;justify-content:center"><button class="game-btn primary" onclick="blChk('${word}')">Check ✓</button><button class="game-btn secondary" onclick="blClr()">Clear</button><button class="game-btn secondary" onclick="blNxt(${words.length})">Next →</button></div>`;
-    window.blTap=i=>{ if(used[i])return; used[i]=true; built.push({l:letters[i],o:i}); refresh(); };
-    window.blRm=i=>{ const item=built.splice(i,1)[0]; used[item.o]=false; refresh(); };
-    window.blClr=()=>{ used=new Array(letters.length).fill(false); built=[]; refresh(); };
-    window.blChk=w=>{ const att=built.map(b=>b.l).join(''); const fb=document.getElementById('sc-fb'); if(att===w){fb.innerHTML=`<div class="game-feedback feedback-correct">🎉 You spelled "${w}" correctly!</div>`;}else{fb.innerHTML=`<div class="game-feedback feedback-wrong">❌ "${att}" — try again!</div>`;} };
-    window.blNxt=len=>{ idx=(idx+1)%len; render(); };
-    refresh();
-  }
-  render();
-}
-
-/* SYLLABLES */
-function renderSyllables(c,words){
-  let idx=0,count=0;
-  function render(){
-    const word=words[idx%words.length]; count=0;
-    const exp=SYLLABLE_MAP[word.toLowerCase()]||Math.max(1,word.replace(/[^aeiou]/gi,'').length);
-    c.innerHTML=`<div class="game-title">👏 Syllable Clapper</div><div class="game-sub">Tap CLAP once for each syllable you hear!</div>
-    <div class="syllable-word">${word}</div>
-    <div id="syl-cnt" style="font-family:var(--font-display);font-size:36px;color:var(--accent-gold);text-align:center;min-height:50px;margin-bottom:10px">—</div>
-    <div class="syllable-btns"><button class="syl-btn" onclick="clap()">👏 CLAP!</button><button class="game-btn secondary" onclick="resetClap()">Reset</button></div>
-    <div style="display:flex;gap:10px;justify-content:center;margin-top:10px"><button class="game-btn primary" onclick="chkSyl(${exp},'${word}')">Done — Check!</button><button class="game-btn secondary" onclick="nxtSyl(${words.length})">Next →</button></div>
-    <div id="syl-fb" style="min-height:40px;margin-top:10px"></div>`;
-  }
-  window.clap=()=>{ count++; document.getElementById('syl-cnt').textContent=count+'  '+' 👏'.repeat(Math.min(count,8)); };
-  window.resetClap=()=>{ count=0; document.getElementById('syl-cnt').textContent='—'; document.getElementById('syl-fb').innerHTML=''; };
-  window.chkSyl=(exp,word)=>{ const fb=document.getElementById('syl-fb'); if(count===exp){fb.innerHTML=`<div class="game-feedback feedback-correct">🎉 Correct! "${word}" has ${exp} syllable${exp>1?'s':''}!</div>`;}else{fb.innerHTML=`<div class="game-feedback feedback-wrong">Not quite — "${word}" has ${exp} syllable${exp>1?'s':''}. You tapped ${count}.</div>`;} };
-  window.nxtSyl=len=>{ idx=(idx+1)%len; render(); };
-  render();
-}
-
-/* MEMORY */
-function renderMemory(c,words){
-  const useWords=words.slice(0,6);
-  const pairs=useWords.flatMap((w,i)=>[{id:i*2,type:'word',val:w,pid:i},{id:i*2+1,type:'def',val:w.split('').reverse().join('').toUpperCase(),pid:i}]);
-  pairs.sort(()=>Math.random()-0.5);
-  let flipped=[],matched=[],locked=false;
-  function render(){
-    c.innerHTML=`<div class="game-title">🃏 Memory Match</div><div class="game-sub">Match the word to its reversed form — find the pairs!</div>
-    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">Matched: <span id="mem-m" style="color:var(--accent-green);font-weight:800">${matched.length}</span> / ${useWords.length}</div>
-    <div class="memory-grid" id="mem-grid"></div>`; paint();
-  }
-  function paint(){
-    const g=document.getElementById('mem-grid'); if(!g) return;
-    g.innerHTML=pairs.map(p=>{
-      const isF=flipped.includes(p.id)||matched.includes(p.pid); const isM=matched.includes(p.pid);
-      return `<div class="mem-card${isM?' matched':isF?' flipped':' back'}" onclick="memFlip(${p.id},${p.pid})">${isF||isM?p.val:'?'}</div>`;
-    }).join('');
-  }
-  window.memFlip=(id,pid)=>{
-    if(locked||flipped.includes(id)||matched.includes(pid)) return;
-    flipped.push(id); paint();
-    if(flipped.length===2){
-      locked=true; const [a,b]=flipped;
-      const ca=pairs.find(p=>p.id===a),cb=pairs.find(p=>p.id===b);
-      if(ca&&cb&&ca.pid===cb.pid&&a!==b){ matched.push(ca.pid); document.getElementById('mem-m').textContent=matched.length; flipped=[]; locked=false; paint(); if(matched.length===useWords.length) setTimeout(()=>{ document.getElementById('mem-grid').insertAdjacentHTML('beforebegin','<div class="game-feedback feedback-correct" style="margin-bottom:12px">🎉 All matched! Amazing!</div>'); },200); }
-      else { setTimeout(()=>{ flipped=[]; locked=false; paint(); },900); }
-    }
-  };
-  render();
-}
-
-/* MISSING LETTERS */
-function renderMissing(c,words){
-  let idx=0,score=0;
-  function render(){
-    const word=words[idx%words.length]; const hide=Math.max(1,Math.floor(word.length/3));
-    const pos=[]; while(pos.length<hide){ const p=Math.floor(Math.random()*word.length); if(!pos.includes(p)) pos.push(p); }
-    const disp=word.split('').map((l,i)=>pos.includes(i)?'_':l).join(' ');
-    c.innerHTML=`<div class="game-title">🔍 Missing Letters</div><div class="game-sub">What letters are missing? Type the full word.</div>
-    <div style="font-family:var(--font-display);font-size:38px;color:var(--accent-teal);text-align:center;letter-spacing:10px;margin:20px 0">${disp.toUpperCase()}</div>
-    <div style="text-align:center;font-size:13px;color:var(--text-secondary);margin-bottom:14px">${hide} letter${hide>1?'s are':' is'} hidden</div>
-    <div class="game-input-row"><input class="game-input" id="mis-in" placeholder="Type the full word..." autocomplete="off"><button class="game-btn primary" onclick="chkMis('${word}',${words.length})">Check ✓</button><button class="game-btn secondary" onclick="nxtMis(${words.length})">Skip →</button></div>
-    <div id="mis-fb" style="min-height:44px;margin-top:10px"></div><div class="score-bar" style="margin-top:12px">Score: <span class="score-val">${score}</span></div>`;
-    setTimeout(()=>{ const i=document.getElementById('mis-in'); if(i){i.focus();i.onkeydown=e=>{if(e.key==='Enter')chkMis(word,words.length);};} },50);
-  }
-  window.chkMis=(w,len)=>{ const i=document.getElementById('mis-in'),fb=document.getElementById('mis-fb'),ans=i.value.trim().toLowerCase(); if(ans===w){score++;fb.innerHTML=`<div class="game-feedback feedback-correct">🎉 Correct — "${w}"!</div>`;idx++;setTimeout(render,1100);}else{fb.innerHTML=`<div class="game-feedback feedback-wrong">❌ Not quite — try again!</div>`;i.value='';i.focus();} };
-  window.nxtMis=len=>{ idx=(idx+1)%len; render(); };
-  render();
-}
-
-/* CATEGORISE */
-function renderCategorise(c,words){
-  const use=words.slice(0,8); const cats=['Short vowel','Long vowel','Blend','Other'];
-  c.innerHTML=`<div class="game-title">🗂️ Categorise Words</div><div class="game-sub">Drag words into the correct category bucket</div>
-  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px" id="cat-words">${use.map(w=>`<div class="cat-item" draggable="true" data-word="${w}" ondragstart="catDS(event)">${w}</div>`).join('')}</div>
-  <div class="cat-grid">${cats.map(cat=>`<div class="cat-bucket" ondragover="catDO(event)" ondrop="catDrop(event,'${cat}')"><div class="cat-bucket-title">${cat}</div><div id="bkt-${cat.replace(' ','-')}"></div></div>`).join('')}</div>
-  <button class="game-btn primary" style="margin-top:14px" onclick="showToast('Great work sorting!')">✓ Done!</button>`;
-  window.catDS=e=>{ e.dataTransfer.setData('text',e.target.dataset.word); window._dragEl=e.target; };
-  window.catDO=e=>{ e.preventDefault(); e.currentTarget.classList.add('drag-over'); };
-  window.catDrop=(e,cat)=>{ e.preventDefault(); e.currentTarget.classList.remove('drag-over'); const el=window._dragEl; if(!el)return; const w=el.dataset.word; el.remove(); const bkt=document.getElementById('bkt-'+cat.replace(' ','-')); if(bkt){const d=document.createElement('div');d.className='cat-item';d.textContent=w;bkt.appendChild(d);} };
-}
-
-/* WORD BREAKER */
-function renderBreaker(c,words){
-  let idx=0;
-  function render(){
-    const word=words[idx%words.length];
-    c.innerHTML=`<div class="game-title">✂️ Word Breaker</div><div class="game-sub">Break this word into syllables using a dot (·) between each part</div>
-    <div style="font-family:var(--font-display);font-size:42px;color:var(--text-primary);text-align:center;margin:20px 0">${word}</div>
-    <div class="game-input-row"><input class="game-input" id="brk-in" placeholder="e.g. rain·bow" autocomplete="off"><button class="game-btn primary" onclick="chkBrk('${word}','${BREAK_MAP[word]||word}')">Check ✓</button><button class="game-btn secondary" onclick="nxtBrk(${words.length})">Next →</button></div>
-    <div style="font-size:12px;color:var(--text-secondary);text-align:center;margin-top:8px">Use · or - between syllables</div>
-    <div id="brk-fb" style="min-height:44px;margin-top:10px"></div>`;
-    setTimeout(()=>{ const i=document.getElementById('brk-in'); if(i) i.focus(); },50);
-  }
-  window.chkBrk=(w,correct)=>{ const ans=document.getElementById('brk-in').value.trim().toLowerCase().replace(/-/g,'·'); const fb=document.getElementById('brk-fb'); if(ans===correct||ans===w){fb.innerHTML=`<div class="game-feedback feedback-correct">🎉 "${correct}" — perfect!</div>`;}else{fb.innerHTML=`<div class="game-feedback feedback-wrong">One way to break it: <b style="color:var(--accent-gold)">${correct}</b></div>`;} };
-  window.nxtBrk=len=>{ idx=(idx+1)%len; render(); };
-  render();
-}
-
-/* WORD JOINER */
-function renderJoiner(c,words){
-  const pairs=[['rain','bow'],['sun','shine'],['out','side'],['birth','day'],['door','bell'],['star','fish'],['ear','ring'],['foot','ball'],['sea','shell'],['fire','work']]; let idx=0;
-  function render(){
-    const [a,b]=pairs[idx%pairs.length];
-    c.innerHTML=`<div class="game-title">🔗 Word Joiner</div><div class="game-sub">Join the two parts to make a compound word!</div>
-    <div style="display:flex;align-items:center;justify-content:center;gap:16px;margin:24px 0">
-      <div style="font-family:var(--font-display);font-size:32px;color:var(--accent-purple);background:rgba(168,85,247,0.15);border:2px solid var(--accent-purple);border-radius:12px;padding:12px 20px">${a.toUpperCase()}</div>
-      <div style="font-size:28px">+</div>
-      <div style="font-family:var(--font-display);font-size:32px;color:var(--accent-coral);background:rgba(255,107,107,0.15);border:2px solid var(--accent-coral);border-radius:12px;padding:12px 20px">${b.toUpperCase()}</div>
+function showFirebaseSetup() {
+  const grid = document.getElementById('student-grid');
+  grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--txt2)">
+    <div style="font-size:36px;margin-bottom:10px">🔥</div>
+    <div style="font-family:var(--fd);font-size:18px;color:var(--gold);margin-bottom:8px">Firebase Setup Required</div>
+    <div style="font-size:13px;line-height:1.8;max-width:420px;margin:0 auto">
+      To use this portal, paste your Firebase config into the <code style="color:var(--teal)">&lt;script type="module"&gt;</code> block at the top of the HTML file.<br><br>
+      See the setup guide below or click Admin to get started in demo mode.
     </div>
-    <div class="game-input-row"><input class="game-input" id="jn-in" placeholder="Type the joined word..." autocomplete="off"><button class="game-btn primary" onclick="chkJn('${a+b}')">Check ✓</button><button class="game-btn secondary" onclick="nxtJn()">Next →</button></div>
-    <div id="jn-fb" style="min-height:44px;margin-top:10px"></div>`;
-    setTimeout(()=>{ const i=document.getElementById('jn-in'); if(i){i.focus();i.onkeydown=e=>{if(e.key==='Enter')chkJn(a+b);};} },50);
-  }
-  window.chkJn=ans=>{ const v=document.getElementById('jn-in').value.trim().toLowerCase(),fb=document.getElementById('jn-fb'); if(v===ans){fb.innerHTML=`<div class="game-feedback feedback-correct">🎉 Correct — "${ans}"!</div>`;idx++;setTimeout(render,1100);}else{fb.innerHTML=`<div class="game-feedback feedback-wrong">❌ Not quite — keep trying!</div>`;document.getElementById('jn-in').value='';} };
-  window.nxtJn=()=>{ idx=(idx+1)%pairs.length; render(); };
-  render();
+  </div>`;
+  // Demo mode — use local data
+  rosterData = {
+    comets:[{id:'demo1',name:'Alex',avatar:'🐶'},{id:'demo2',name:'Sam',avatar:'🦊'},{id:'demo3',name:'Mia',avatar:'🦋'}],
+    meteors:[{id:'demo4',name:'Jake',avatar:'🐯'},{id:'demo5',name:'Lily',avatar:'🦄'}],
+    nebulas:[{id:'demo6',name:'Noah',avatar:'🐲'}],
+    rockets:[{id:'demo7',name:'Zoe',avatar:'🦅'},{id:'demo8',name:'Tom',avatar:'🐬'}]
+  };
+  renderLoginGrid();
 }
 
-/* SENTENCES */
-function renderSentences(c,words){
-  let idx=0;
-  function render(){
-    const word=words[idx%words.length];
-    c.innerHTML=`<div class="game-title">✏️ Sentence Writing</div><div class="game-sub">Write a sentence using the word below — show you know what it means!</div>
-    <div style="font-family:var(--font-display);font-size:40px;color:var(--accent-gold);text-align:center;margin:20px 0">${word}</div>
-    <textarea class="admin-textarea" id="sent-in" placeholder="Write your sentence here..." style="width:100%;min-height:80px;margin-bottom:12px"></textarea>
-    <div style="display:flex;gap:10px"><button class="game-btn primary" onclick="saveSent('${word}',${words.length})">Save ✓</button><button class="game-btn secondary" onclick="nxtSent(${words.length})">Next →</button></div>
-    <div id="sent-fb" style="min-height:44px;margin-top:10px"></div>`;
-  }
-  window.saveSent=(w,len)=>{ const v=document.getElementById('sent-in').value.trim(); if(!v)return; document.getElementById('sent-fb').innerHTML=`<div class="game-feedback feedback-correct">🌟 Great sentence using "${w}"!</div>`; idx++; setTimeout(render,1400); };
-  window.nxtSent=len=>{ idx=(idx+1)%len; render(); };
-  render();
+// ── ROSTER LISTENER ──
+function startRosterListener() {
+  if (rosterListener) rosterListener();
+  rosterListener = window._listenRoster(data => {
+    rosterData = data;
+    renderLoginGrid();
+    if (document.getElementById('adm-roster-panel').style.display !== 'none') renderRosterAdmin();
+  });
 }
 
-/* ADMIN */
-function adminSelectGroup(g,el){
-  STATE.adminGroup=g; document.querySelectorAll('.admin-group-row').forEach(r=>r.classList.remove('active')); el.classList.add('active');
-  const lbl=document.getElementById('admin-selected-label'); if(lbl){lbl.textContent=g.charAt(0).toUpperCase()+g.slice(1);lbl.style.color=`var(--${g})`;}
-  loadAdminData(); renderAdminTasks();
+// ── LOGIN SCREEN ──
+function loginSelGroup(g, el) {
+  loginGroup = g;
+  document.querySelectorAll('.gtab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderLoginGrid();
 }
-function adminSelectTerm(t,el){
-  STATE.adminTerm=t; document.querySelectorAll('#admin-term-btns .tw-pill').forEach(p=>p.classList.remove('active')); el.classList.add('active'); renderAdminArchive();
+
+async function renderLoginGrid() {
+  const grid = document.getElementById('student-grid');
+  const students = rosterData[loginGroup] || [];
+  if (!students.length) {
+    grid.innerHTML = `<div class="no-students" style="grid-column:1/-1">No students in this group yet.<br><span style="font-size:12px">Ask your teacher to add names in Admin.</span></div>`;
+    return;
+  }
+  // Load stars for each student for current week
+  const starMap = {};
+  if (window._loadProgress) {
+    await Promise.all(students.map(async st => {
+      try { const p = await window._loadProgress(st.id, loginGroup, S.term, S.week); starMap[st.id] = p.stars || 0; } catch(e) { starMap[st.id] = 0; }
+    }));
+  }
+  grid.innerHTML = students.map(st => {
+    const stars = starMap[st.id] || 0;
+    const starStr = '⭐'.repeat(Math.min(stars,10)) + (stars < 10 ? `<span style="opacity:.3">${'⭐'.repeat(10-stars)}</span>` : '');
+    return `<div class="student-btn" onclick="selectStudent('${st.id}','${loginGroup}')">
+      <div class="s-avatar" id="sav-${st.id}">${st.avatar || st.name.charAt(0).toUpperCase()}</div>
+      <div class="s-name">${st.name}</div>
+      <div class="s-stars">${stars}/10 ⭐</div>
+    </div>`;
+  }).join('');
 }
-function loadAdminData(){
-  const d=DATA[STATE.adminGroup]?.[STATE.adminTerm]?.[STATE.adminWeek];
-  const f=document.getElementById('admin-focus'),w=document.getElementById('admin-wordlist'),n=document.getElementById('admin-notes');
-  if(d){ if(f)f.value=d.focus||''; if(w)w.value=d.words?d.words.join('\n'):''; if(n)n.value=d.notes||''; }
-  else { if(f)f.value=''; if(w)w.value=''; if(n)n.value=''; }
+
+async function selectStudent(id, group) {
+  const students = rosterData[group] || [];
+  const st = students.find(s => s.id === id);
+  if (!st) return;
+
+  currentStudent = { ...st, group };
+  S.group = group;
+
+  // Load progress
+  if (window._loadProgress) {
+    currentProgress = await window._loadProgress(id, group, S.term, S.week);
+  } else {
+    currentProgress = { stars: 0, completedActivities: [] };
+  }
+
+  // Start live progress listener
+  if (progressListener) progressListener();
+  if (window._listenProgress) {
+    progressListener = window._listenProgress(id, group, S.term, S.week, p => {
+      currentProgress = p;
+      renderProgressBlock();
+      updateActivityGrid();
+    });
+  }
+
+  // Update header
+  renderStudentHeader();
+  showView('home');
 }
-function renderAdminArchive(){
-  const grid=document.getElementById('admin-archive-grid'); if(!grid) return; grid.innerHTML='';
+
+function renderStudentHeader() {
+  const hdr = document.getElementById('student-hdr');
+  if (!currentStudent) { hdr.innerHTML = ''; return; }
+  const gc = `var(--${currentStudent.group})`;
+  hdr.innerHTML = `<div class="student-chip" onclick="showView('login')">
+    <div class="ava">${currentStudent.avatar||currentStudent.name.charAt(0)}</div>
+    <div>
+      <div class="sname">${currentStudent.name}</div>
+    </div>
+    <div class="grp-dot" style="background:${gc}"></div>
+  </div>`;
+}
+
+// ── AVATAR PICKER ──
+function openAvatarPicker(studentId, group) {
+  avPickerStudent = { id: studentId, group };
+  const st = (rosterData[group]||[]).find(s=>s.id===studentId);
+  avSelected = st ? st.avatar : '🐶';
+  document.getElementById('av-preview').textContent = avSelected;
+  const grid = document.getElementById('av-grid');
+  grid.innerHTML = ANIMALS.map(a => `<div class="av-opt${a===avSelected?' selected':''}" onclick="pickAv('${a}')">${a}</div>`).join('');
+  document.getElementById('av-picker').classList.add('show');
+}
+function pickAv(a) {
+  avSelected = a;
+  document.getElementById('av-preview').textContent = a;
+  document.querySelectorAll('.av-opt').forEach(el => el.classList.toggle('selected', el.textContent === a));
+}
+async function saveAvatar() {
+  if (!avPickerStudent || !avSelected) return;
+  const { id, group } = avPickerStudent;
+  const students = (rosterData[group]||[]).map(s => s.id===id ? {...s, avatar:avSelected} : s);
+  rosterData[group] = students;
+  if (window._saveRoster) await window._saveRoster(rosterData);
+  document.getElementById('av-picker').classList.remove('show');
+  toast('Avatar saved!');
+  renderRosterAdmin();
+  // Update current student if it's them
+  if (currentStudent && currentStudent.id === id) {
+    currentStudent.avatar = avSelected;
+    renderStudentHeader();
+  }
+}
+
+// ── NAVIGATION ──
+function showView(v) {
+  document.querySelectorAll('.view').forEach(e => e.classList.remove('active'));
+  document.querySelectorAll('.nb').forEach(e => e.classList.remove('active'));
+  const el = document.getElementById('view-' + v);
+  if (el) el.classList.add('active');
+  const nb = document.getElementById('nb-' + v);
+  if (nb) nb.classList.add('active');
+  if (v === 'home') { renderHome(); renderProgressBlock(); }
+  if (v === 'words') renderWords();
+  if (v === 'admin') renderAdmin();
+  if (v === 'login') { renderLoginGrid(); renderStudentHeader(); }
+  if (v === 'activities') updateActivityGrid();
+}
+
+function mkWeekPills(id, cb, sel) {
+  const c = document.getElementById(id); if (!c) return; c.innerHTML = '';
+  for (let i = 1; i <= 11; i++) {
+    const b = document.createElement('button'); b.className = 'twp' + (i===sel?' active':''); b.textContent = 'W'+i;
+    b.onclick = () => { document.querySelectorAll('#'+id+' .twp').forEach(p=>p.classList.remove('active')); b.classList.add('active'); cb(i,b); };
+    c.appendChild(b);
+  }
+}
+
+function selT(t, el) {
+  S.term = t; S.week = 1;
+  document.querySelectorAll('#term-pills .twp').forEach(p=>p.classList.remove('active')); el.classList.add('active');
+  mkWeekPills('week-pills', (w,b) => { S.week = w; attachWeekListener(); refreshAll(); }, 1);
+  attachWeekListener(); refreshAll();
+}
+
+function refreshAll() {
+  renderHome(); renderProgressBlock();
+  if (document.getElementById('view-words').classList.contains('active')) renderWords();
+}
+
+function attachWeekListener() {
+  if (weekListener) weekListener();
+  if (!window._listenWeek) return;
+  weekListener = window._listenWeek(S.group, S.term, S.week, data => {
+    currentWeekData = data;
+    renderHome();
+    if (document.getElementById('view-words').classList.contains('active')) renderWords();
+  });
+  // Also re-attach progress listener for new week
+  if (currentStudent && window._listenProgress) {
+    if (progressListener) progressListener();
+    progressListener = window._listenProgress(currentStudent.id, S.group, S.term, S.week, p => {
+      currentProgress = p;
+      renderProgressBlock();
+      updateActivityGrid();
+    });
+  }
+}
+
+// ── HOME / PROGRESS ──
+function renderHome() {
+  const d = currentWeekData;
+  const focusTitle = document.getElementById('focus-title');
+  const focusSub = document.getElementById('focus-sub');
+  const focusBadges = document.getElementById('focus-badges');
+  if (!focusTitle) return;
+  focusTitle.textContent = `Term ${S.term} · Week ${S.week} ✨`;
+  focusSub.textContent = d ? d.focus : 'No focus assigned yet';
+  focusBadges.innerHTML = d
+    ? `<span class="badge bt-t">${(d.words||[]).length} words</span><span class="badge bt-g">${S.group}</span>${d.notes?'<span class="badge bt-c" style="font-size:10px;margin-top:4px">'+d.notes+'</span>':''}`
+    : '<span class="badge bt-c">Pending — check back soon</span>';
+}
+
+function renderProgressBlock() {
+  const block = document.getElementById('progress-block');
+  if (!block || !currentStudent) { if(block) block.innerHTML=''; return; }
+  const p = currentProgress;
+  const stars = Math.min(p.stars || 0, 10);
+  const done = p.completedActivities || [];
+  const allActs = Object.keys(ACT_NAMES);
+  const starsHtml = Array.from({length:10},(_,i)=>`<div class="star-item ${i<stars?'earned':'empty'}">${i<stars?'⭐':'☆'}</div>`).join('');
+  const chipsHtml = allActs.map(a=>`<div class="act-chip ${done.includes(a)?'done':'todo'}">${ACT_ICONS[a]} ${ACT_NAMES[a]}</div>`).join('');
+  let msg = stars >= 10 ? '🎉 Amazing! Full 10 stars this week!' : `${10-stars} more to go!`;
+  block.innerHTML = `<div class="progress-card">
+    <div class="progress-header">
+      <div class="progress-avatar">${currentStudent.avatar||currentStudent.name.charAt(0)}</div>
+      <div>
+        <div class="progress-name">${currentStudent.name}</div>
+        <div class="progress-group" style="color:var(--${currentStudent.group})">${currentStudent.group} · T${S.term} W${S.week}</div>
+        <div style="font-size:12px;color:var(--txt2);margin-top:2px">${stars}/10 stars — ${msg}</div>
+      </div>
+      <div style="margin-left:auto">
+        <button class="gbtn s" style="font-size:11px;padding:5px 10px" onclick="openAvatarPicker('${currentStudent.id}','${currentStudent.group}')">✏️ Avatar</button>
+      </div>
+    </div>
+    <div class="stars-row">${starsHtml}</div>
+    <div class="activity-chips">${chipsHtml}</div>
+  </div>`;
+}
+
+function updateActivityGrid() {
+  const done = (currentProgress.completedActivities || []);
+  Object.keys(ACT_NAMES).forEach(id => {
+    const el = document.getElementById('ac-'+id);
+    if (el) el.classList.toggle('completed', done.includes(id));
+  });
+}
+
+async function awardStar(activityId) {
+  if (!currentStudent) return;
+  const done = currentProgress.completedActivities || [];
+  if (done.includes(activityId)) return; // already earned
+  const newDone = [...done, activityId];
+  const newStars = Math.min(newDone.length, 10);
+  currentProgress = { ...currentProgress, stars: newStars, completedActivities: newDone };
+  renderProgressBlock();
+  updateActivityGrid();
+  if (window._saveProgress) {
+    await window._saveProgress(currentStudent.id, S.group, S.term, S.week, newStars, newDone);
+  }
+  // Celebrate
+  showStarCelebration(newStars, activityId);
+}
+
+function showStarCelebration(total, actId) {
+  const icon = document.getElementById('cel-icon');
+  const title = document.getElementById('cel-title');
+  const msg = document.getElementById('cel-msg');
+  if (total >= 10) {
+    icon.textContent = '🏆'; title.textContent = '10 Stars! You did it!'; msg.textContent = 'Perfect score this week — incredible work!';
+  } else if (total >= 7) {
+    icon.textContent = '🌟'; title.textContent = `${total} Stars!`; msg.textContent = `Almost there — just ${10-total} more to go!`;
+  } else {
+    icon.textContent = '⭐'; title.textContent = `Star earned! (${total}/10)`; msg.textContent = `Great job completing ${ACT_NAMES[actId]}!`;
+  }
+  document.getElementById('star-celebrate').classList.add('show');
+}
+
+// ── WORDS ──
+function renderWords() {
+  const d = currentWeekData;
+  const words = d ? (d.words||[]) : [];
+  document.getElementById('wc-badge').textContent = words.length + ' words';
+  const wl = document.getElementById('main-wl'); wl.innerHTML = '';
+  words.forEach(w => { const c=document.createElement('div');c.className='wc';c.textContent=w;wl.appendChild(c); });
+  renderCustWords();
+}
+function renderCustWords() {
+  const cl = document.getElementById('cust-wl'); cl.innerHTML = '';
+  S.customWords.forEach((w,i) => { const c=document.createElement('div');c.className='wc cust';c.textContent=w+' ✕';c.onclick=()=>{S.customWords.splice(i,1);renderCustWords();};cl.appendChild(c); });
+}
+function addCust() {
+  const i = document.getElementById('cust-in'); const w = i.value.trim().toLowerCase();
+  if (w && !S.customWords.includes(w)) { S.customWords.push(w); renderCustWords(); toast('Added: '+w); } i.value='';
+}
+function getSW() {
+  const d = currentWeekData; const b = d ? (d.words||[]) : ['road','coat','show','below','float','groan'];
+  return [...b, ...S.customWords];
+}
+
+// ── ADMIN PASSWORD ──
+function adminAccess() {
+  if (adminUnlocked) { showView('admin'); return; }
+  document.getElementById('adm-lock').classList.add('show');
+  document.getElementById('lock-pw').value = '';
+  document.getElementById('lock-err').textContent = '';
+  setTimeout(() => document.getElementById('lock-pw').focus(), 100);
+}
+function checkPw() {
+  const v = document.getElementById('lock-pw').value;
+  if (v === ADMIN_PW) { adminUnlocked=true; document.getElementById('adm-lock').classList.remove('show'); showView('admin'); }
+  else { document.getElementById('lock-err').textContent='Incorrect password.'; document.getElementById('lock-pw').value=''; document.getElementById('lock-pw').focus(); }
+}
+function hideLock() { document.getElementById('adm-lock').classList.remove('show'); }
+function lockAdmin() { adminUnlocked=false; showView('login'); toast('Admin locked 🔒'); }
+document.getElementById('lock-pw').addEventListener('keydown', e => { if(e.key==='Enter') checkPw(); });
+
+// ── ADMIN TABS ──
+function admTab(tab) {
+  ['content','roster','progress'].forEach(t => {
+    document.getElementById('adm-tab-'+t).classList.toggle('active', t===tab);
+    document.getElementById('adm-'+t+'-panel').style.display = t===tab ? '' : 'none';
+  });
+  if (tab==='roster') renderRosterAdmin();
+  if (tab==='progress') loadProgView();
+}
+
+// ── ADMIN CONTENT ──
+function admSelG(g, el) {
+  S.adminGroup = g;
+  document.querySelectorAll('.admgr').forEach(r=>r.classList.remove('active')); el.classList.add('active');
+  const lbl = document.getElementById('adm-lbl'); if(lbl){lbl.textContent=g.charAt(0).toUpperCase()+g.slice(1);lbl.style.color=`var(--${g})`;}
+  renderAdmArc(); loadAdmForm();
+}
+function admSelT(t, el) {
+  S.adminTerm=t;
+  document.querySelectorAll('#adm-t-btns .twp').forEach(p=>p.classList.remove('active')); el.classList.add('active');
+  renderAdmArc();
+}
+async function loadAdmForm() {
+  const lbl = document.getElementById('adm-week-lbl');
+  if (lbl) lbl.textContent = `T${S.adminTerm} W${S.adminWeek}`;
+  if (!window._fs) return;
+  try {
+    const snap = await window._fs.getDoc(window._fs.doc(window._db,'weekData',`${S.adminGroup}_T${S.adminTerm}_W${S.adminWeek}`));
+    const d = snap.exists() ? snap.data() : null;
+    document.getElementById('adm-focus').value = d?.focus || '';
+    document.getElementById('adm-words').value = d?.words ? d.words.join('\n') : '';
+    document.getElementById('adm-passage').value = d?.passage || '';
+    document.getElementById('adm-notes').value = d?.notes || '';
+  } catch(e) { console.log('Load form error:', e); }
+}
+async function renderAdmArc() {
+  const grid = document.getElementById('adm-arc'); if(!grid) return; grid.innerHTML='';
+  let hasData = {};
+  if (window._loadArchive) { try { const arc = await window._loadArchive(S.adminGroup); Object.keys(arc).forEach(k => { const m=k.match(/_T(\d+)_W(\d+)/); if(m&&parseInt(m[1])===S.adminTerm) hasData[parseInt(m[2])]=true; }); } catch(e){} }
   for(let w=1;w<=11;w++){
-    const hd=DATA[STATE.adminGroup]?.[STATE.adminTerm]?.[w];
-    const item=document.createElement('div'); item.className='archive-item'+(hd?' has-data':'');
-    item.innerHTML=`<div class="arc-term">T${STATE.adminTerm}</div><div class="arc-week">W${w}</div>`;
-    item.onclick=()=>{ STATE.adminWeek=w; STATE.term=STATE.adminTerm; STATE.week=w; document.querySelectorAll('.archive-item').forEach(i=>i.style.background=''); item.style.background='rgba(78,205,196,0.15)'; loadAdminData(); showToast('Loaded T'+STATE.adminTerm+' W'+w); };
+    const item=document.createElement('div');item.className='arci'+(hasData[w]?' hd':'');
+    item.innerHTML=`<div class="at">T${S.adminTerm}</div><div class="aw">W${w}</div>`;
+    item.onclick=()=>{ S.adminWeek=w; document.querySelectorAll('.arci').forEach(i=>i.style.background=''); item.style.background='rgba(78,205,196,.15)'; loadAdmForm(); toast('Loaded T'+S.adminTerm+' W'+w); };
     grid.appendChild(item);
   }
 }
-function renderAdminTasks(){
-  const list=document.getElementById('admin-tasks-list'); if(!list) return;
-  const tasks=[{id:'scramble',n:'Word Scramble',i:'🔀'},{id:'builder',n:'Word Builder',i:'🧱'},{id:'syllables',n:'Syllables',i:'👏'},{id:'categorise',n:'Categorise',i:'🗂️'},{id:'memory',n:'Memory Match',i:'🃏'},{id:'missing',n:'Missing Letters',i:'🔍'},{id:'breaker',n:'Word Breaker',i:'✂️'},{id:'joiner',n:'Word Joiner',i:'🔗'},{id:'sentences',n:'Sentence Writing',i:'✏️'}];
-  const enabled=['scramble','builder','syllables','memory','missing'];
-  list.innerHTML=tasks.map(t=>`<div class="task-row"><div class="task-check${enabled.includes(t.id)?' checked':''}" onclick="this.classList.toggle('checked')"></div><span style="font-size:16px">${t.i}</span><span class="task-label">${t.n}</span><span class="task-group-badge" style="background:rgba(255,255,255,0.06);color:var(--${STATE.adminGroup});border:1px solid var(--${STATE.adminGroup})">${STATE.adminGroup}</span></div>`).join('');
+function renderAdmTasks() {
+  const list = document.getElementById('adm-tasks'); if(!list) return;
+  const enabled=['findsound','scramble','builder','syllables','memory','missing'];
+  list.innerHTML = Object.entries(ACT_NAMES).map(([id,name])=>`<div class="trow"><div class="tck${enabled.includes(id)?' ck':''}" onclick="this.classList.toggle('ck')"></div><span style="font-size:15px">${ACT_ICONS[id]}</span><span class="tlbl">${name}</span><span class="tgb" style="background:rgba(255,255,255,.06);color:var(--${S.adminGroup});border:1px solid var(--${S.adminGroup})">${S.adminGroup}</span></div>`).join('');
 }
-function renderAdmin(){ renderAdminArchive(); renderAdminTasks(); loadAdminData(); }
-function adminSave(){
-  const g=STATE.adminGroup,t=STATE.adminTerm,w=STATE.adminWeek;
-  const focus=document.getElementById('admin-focus')?.value||'';
-  const words=(document.getElementById('admin-wordlist')?.value||'').split('\n').map(s=>s.trim()).filter(Boolean);
-  const notes=document.getElementById('admin-notes')?.value||'';
-  if(!DATA[g]) DATA[g]={};
-  if(!DATA[g][t]) DATA[g][t]={};
-  DATA[g][t][w]={focus,words,notes};
-  STATE.group=g; STATE.term=t; STATE.week=w;
-  renderAdminArchive(); showToast('✅ Saved T'+t+' W'+w+' for '+g);
+async function admSave() {
+  const focus = document.getElementById('adm-focus')?.value||'';
+  const words = (document.getElementById('adm-words')?.value||'').split('\n').map(s=>s.trim()).filter(Boolean);
+  const notes = document.getElementById('adm-notes')?.value||'';
+  const passage = document.getElementById('adm-passage')?.value||'';
+  const status = document.getElementById('adm-save-status');
+  if (status) status.textContent = 'Saving...';
+  try {
+    if (window._saveWeek) {
+      await window._saveWeek(S.adminGroup, S.adminTerm, S.adminWeek, {focus,words,notes,passage,updatedAt:Date.now()});
+    }
+    if (status) status.textContent = '✅ Saved and pushed live!';
+    renderAdmArc();
+    toast('Saved! Students will see this immediately.');
+    setTimeout(()=>{ if(status) status.textContent=''; },3000);
+  } catch(e) {
+    if (status) status.textContent = '❌ Save failed — check Firebase config.';
+  }
+}
+function renderAdmin() { renderAdmArc(); renderAdmTasks(); loadAdmForm(); }
+
+// ── ROSTER ADMIN ──
+function renderRosterAdmin() {
+  ['comets','meteors','nebulas','rockets'].forEach(g => {
+    const list = document.getElementById('rl-'+g); if(!list) return;
+    const students = rosterData[g]||[];
+    list.innerHTML = students.map(st => `<div class="roster-row">
+      <div class="roster-ava" style="cursor:pointer" onclick="openAvatarPicker('${st.id}','${g}')" title="Change avatar">${st.avatar||st.name.charAt(0)}</div>
+      <div class="roster-name">${st.name}</div>
+      <button class="roster-del" onclick="removeStudent('${st.id}','${g}')">Remove</button>
+    </div>`).join('') || '<div style="font-size:12px;color:var(--txt2);padding:6px 0">No students yet</div>';
+  });
+}
+async function addStudent(group) {
+  const inp = document.getElementById('ri-'+group);
+  const name = inp.value.trim();
+  if (!name) return;
+  const id = 's_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+  const avatar = ANIMALS[Math.floor(Math.random()*ANIMALS.length)];
+  if (!rosterData[group]) rosterData[group] = [];
+  rosterData[group].push({id, name, avatar});
+  inp.value = '';
+  if (window._saveRoster) await window._saveRoster(rosterData);
+  toast(`${name} added to ${group}!`);
+}
+async function removeStudent(id, group) {
+  rosterData[group] = (rosterData[group]||[]).filter(s => s.id !== id);
+  if (window._saveRoster) await window._saveRoster(rosterData);
+  toast('Student removed');
 }
 
-function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
+// ── PROGRESS VIEW (admin) ──
+async function loadProgView() {
+  const g = document.getElementById('prog-group-sel')?.value || 'comets';
+  document.getElementById('prog-t-lbl').textContent = S.adminTerm;
+  document.getElementById('prog-w-lbl').textContent = S.adminWeek;
+  const view = document.getElementById('prog-view');
+  view.innerHTML = '<div style="color:var(--txt2);font-size:13px;padding:10px 0">Loading...</div>';
+  const students = rosterData[g] || [];
+  if (!students.length) { view.innerHTML='<div style="color:var(--txt2);font-size:13px;padding:10px 0">No students in this group.</div>'; return; }
+  let progMap = {};
+  if (window._loadGroupProgress) {
+    try { progMap = await window._loadGroupProgress(g, S.adminTerm, S.adminWeek); } catch(e) {}
+  }
+  const rows = students.map(st => {
+    const p = progMap[st.id] || { stars:0, completedActivities:[] };
+    const stars = p.stars||0;
+    const miniStars = Array.from({length:10},(_,i)=>`<span class="prog-star">${i<stars?'⭐':'☆'}</span>`).join('');
+    return `<tr>
+      <td><div style="display:flex;align-items:center;gap:7px"><span style="font-size:18px">${st.avatar||st.name.charAt(0)}</span><span style="font-weight:700">${st.name}</span></div></td>
+      <td><div class="prog-mini-stars">${miniStars}</div></td>
+      <td style="font-weight:800;color:${stars>=10?'var(--green)':stars>=7?'var(--gold)':'var(--txt2)'}">${stars}/10</td>
+      <td style="font-size:11px;color:var(--txt2)">${(p.completedActivities||[]).length} activities</td>
+    </tr>`;
+  }).join('');
+  view.innerHTML = `<table class="prog-table"><thead><tr><th>Student</th><th>Stars</th><th>Score</th><th>Activities</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
 
-// Init
+// ── ACTIVITIES ──
+function launch(id) {
+  S.activeGame = id; showView('activities');
+  const c = document.getElementById('game-container'); const words = getSW();
+  if (!words.length) { c.innerHTML='<div style="text-align:center;padding:36px;color:var(--txt2)">No words yet! Ask your teacher to assign a word list.</div>'; return; }
+  if (id==='findsound') gFindSound(c);
+  else if (id==='scramble') gScramble(c,words);
+  else if (id==='builder') gBuilder(c,words);
+  else if (id==='syllables') gSyllables(c,words);
+  else if (id==='memory') gMemory(c,words);
+  else if (id==='missing') gMissing(c,words);
+  else if (id==='categorise') gCategorise(c,words);
+  else if (id==='breaker') gBreaker(c,words);
+  else if (id==='joiner') gJoiner(c,words);
+  else if (id==='sentences') gSentences(c,words);
+}
+
+// ── FIND THE SOUND ──
+function gFindSound(c) {
+  const d = currentWeekData;
+  const focus = d?.focus || 'This week\'s spelling focus';
+  const defaultPassage = d?.passage && d.passage.trim() ? d.passage : '';
+  const words = d?.words || [];
+  let patterns = [];
+  const commonPats = ['oa','ow','igh','tion','ea','un','ing','mis','dis','pre','rupt','aud','port','ph','graph','scope','kn','wr','gn','ck','ch','sh','th','wh'];
+  commonPats.forEach(p => { if(words.some(w=>w.toLowerCase().includes(p))) patterns.push(p); });
+  if (!patterns.length) patterns = ['oa','ow'];
+  let passage = defaultPassage;
+  let highlighted = new Set();
+  let mode = 'click';
+  let completed = false;
+
+  function tokenise(txt) { return txt.match(/[a-zA-Z']+|[^a-zA-Z']+/g)||[]; }
+  function countTargets(txt,pats) { let n=0; tokenise(txt).forEach((t,i)=>{ if(/[a-zA-Z]/.test(t)&&pats.some(p=>t.toLowerCase().includes(p))) n++; }); return n; }
+
+  function renderPassage(txt, hSet, activeMode, pats) {
+    return tokenise(txt).map((tok,ti)=>{
+      if(!/[a-zA-Z]/.test(tok)) return tok.replace(/\n/g,'<br>');
+      const isHl=hSet.has(ti); const hasM=pats.some(p=>tok.toLowerCase().includes(p));
+      if(isHl) return `<span class="hl" onclick="ftsT(${ti})">${tok}</span>`;
+      if(activeMode==='auto'&&hasM) return `<span class="hl">${tok}</span>`;
+      return `<span class="word" onclick="ftsT(${ti})">${tok}</span>`;
+    }).join('');
+  }
+
+  function build() {
+    const total = passage ? countTargets(passage, patterns) : 0;
+    c.innerHTML = `<div class="gtit">🔎 Find the Sound</div>
+    <div class="gsub">Tap every word in the passage that contains the focus sound!</div>
+    <div class="fts-badge">${focus}</div>
+    <div style="display:flex;gap:7px;margin-bottom:10px;flex-wrap:wrap">
+      <button class="fts-mb${mode==='click'?' active':''}" onclick="ftsMode('click')">👆 Click Mode</button>
+      <button class="fts-mb${mode==='auto'?' active':''}" onclick="ftsMode('auto')">✨ Auto Mode</button>
+    </div>
+    ${passage ? `
+    <div class="fts-stats">
+      <div class="fts-stat g">Target: ~${total}</div>
+      <div class="fts-stat t">Found: <span id="fts-cnt">${highlighted.size}</span></div>
+      <div class="fts-stat c" id="fts-sc-badge" style="display:none">Score: <span id="fts-sc">0</span>%</div>
+    </div>
+    <div class="fts-passage" id="fts-p">${renderPassage(passage,highlighted,mode,patterns)}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="gbtn p" onclick="ftsCheck()">Check Answers ✓</button>
+      <button class="gbtn s" onclick="ftsClear()">Clear</button>
+      <button class="gbtn s" onclick="ftsPaste()">📋 New Text</button>
+    </div>` :
+    `<div style="color:var(--txt2);font-size:13px;margin-bottom:12px;padding:16px;background:rgba(255,255,255,.04);border-radius:12px;text-align:center">No passage loaded yet. Paste one below or ask your teacher to add one.</div>
+    <button class="gbtn s" onclick="ftsPaste()" style="margin-bottom:12px">📋 Paste Text</button>`}
+    <div id="fts-paste-area" style="display:none;margin-bottom:12px">
+      <div style="font-size:11px;color:var(--txt2);font-weight:700;text-transform:uppercase;margin-bottom:6px">Paste a passage:</div>
+      <textarea class="fts-ta" id="fts-new" placeholder="Paste any text here...">${passage}</textarea>
+      <div style="display:flex;gap:7px;margin-top:8px">
+        <button class="gbtn p" onclick="ftsLoad()">Load →</button>
+        <button class="gbtn s" onclick="document.getElementById('fts-paste-area').style.display='none'">Cancel</button>
+      </div>
+    </div>
+    <div id="fts-fb" style="min-height:44px"></div>`;
+
+    window.ftsT = ti => {
+      if(mode==='auto') return;
+      if(highlighted.has(ti)) highlighted.delete(ti); else highlighted.add(ti);
+      if(document.getElementById('fts-p')) document.getElementById('fts-p').innerHTML = renderPassage(passage,highlighted,mode,patterns);
+      const cnt = document.getElementById('fts-cnt'); if(cnt) cnt.textContent = highlighted.size;
+    };
+    window.ftsMode = m => {
+      mode=m; highlighted.clear();
+      document.querySelectorAll('.fts-mb').forEach(b=>{b.classList.toggle('active',(m==='click'&&b.textContent.includes('Click'))||(m==='auto'&&b.textContent.includes('Auto')));});
+      if(document.getElementById('fts-p')) document.getElementById('fts-p').innerHTML=renderPassage(passage,highlighted,mode,patterns);
+    };
+    window.ftsCheck = () => {
+      const tokens=tokenise(passage); let cor=0,miss=0,wrong=0;
+      tokens.forEach((tok,ti)=>{ if(!/[a-zA-Z]/.test(tok)) return; const hasP=patterns.some(p=>tok.toLowerCase().includes(p)); const isHl=highlighted.has(ti); if(hasP&&isHl)cor++; else if(hasP)miss++; else if(isHl)wrong++; });
+      const tot=cor+miss; const pct=tot>0?Math.round(cor/tot*100):0;
+      const fb=document.getElementById('fts-fb'); const sb=document.getElementById('fts-sc-badge'); const sc=document.getElementById('fts-sc');
+      if(sb){sb.style.display='block';sc.textContent=pct;}
+      if(pct===100){fb.innerHTML=`<div class="gfb ok">🎉 Perfect! All ${cor} words found!</div>`;if(!completed){completed=true;awardStar('findsound');}}
+      else if(pct>=70){fb.innerHTML=`<div class="gfb ok">⭐ Great! ${cor}/${tot} — missed ${miss}. Try again!</div>`;}
+      else{fb.innerHTML=`<div class="gfb ng">💪 ${cor}/${tot} — keep looking! ${miss} missed, ${wrong} wrong.</div>`;}
+    };
+    window.ftsClear = () => { highlighted.clear(); if(document.getElementById('fts-p')) document.getElementById('fts-p').innerHTML=renderPassage(passage,highlighted,mode,patterns); const cnt=document.getElementById('fts-cnt');if(cnt)cnt.textContent=0; document.getElementById('fts-fb').innerHTML=''; };
+    window.ftsPaste = () => { document.getElementById('fts-paste-area').style.display='block'; };
+    window.ftsLoad = () => { const v=document.getElementById('fts-new').value.trim(); if(!v){toast('Paste some text first!');return;} passage=v; highlighted.clear(); document.getElementById('fts-paste-area').style.display='none'; build(); };
+  }
+  build();
+}
+
+// ── SCRAMBLE ──
+function gScramble(c,words){
+  let idx=Math.floor(Math.random()*words.length),score=0,tried=0,done=false;
+  const sc=w=>w.split('').sort(()=>Math.random()-.5).join('');
+  function render(){
+    const word=words[idx%words.length];
+    c.innerHTML=`<div class="gtit">🔀 Word Scramble</div><div class="gsub">Unscramble the letters to spell the word!</div>
+    <div class="scb" style="margin-bottom:14px">Score:<span class="sv">${score}</span>Tried:<span class="sv">${tried}</span><span style="margin-left:auto;color:var(--txt2)">${idx%words.length+1}/${words.length}</span></div>
+    <div class="scrmw">${sc(word).toUpperCase()}</div>
+    <div id="fb" style="min-height:42px"></div>
+    <div class="ginr"><input class="gin" id="gin" placeholder="Type your answer..." autocomplete="off"><button class="gbtn p" onclick="chkSc('${word}',${words.length})">Check ✓</button><button class="gbtn s" onclick="nxtSc(${words.length})">Skip →</button></div>`;
+    setTimeout(()=>{const i=document.getElementById('gin');if(i){i.focus();i.onkeydown=e=>{if(e.key==='Enter')chkSc(word,words.length);};}},50);
+  }
+  window.chkSc=(w,len)=>{const i=document.getElementById('gin'),fb=document.getElementById('fb'),a=i.value.trim().toLowerCase();tried++;if(a===w){score++;fb.innerHTML=`<div class="gfb ok">🎉 Correct! "${w}"</div>`;i.value='';idx++;if(score>=3&&!done){done=true;awardStar('scramble');}setTimeout(render,1100);}else{fb.innerHTML=`<div class="gfb ng">❌ Try again!</div>`;i.value='';i.focus();}};
+  window.nxtSc=len=>{idx=(idx+1)%len;render();};
+  render();
+}
+
+// ── BUILDER ──
+function gBuilder(c,words){
+  let idx=0,done=false;
+  function render(){
+    const word=words[idx%words.length];const letters=word.split('').sort(()=>Math.random()-.5);
+    let used=new Array(letters.length).fill(false),built=[];
+    function rf(){
+      document.getElementById('bl-t').innerHTML=letters.map((l,i)=>`<div class="lt${used[i]?' used':''}" onclick="blT(${i})">${l.toUpperCase()}</div>`).join('');
+      document.getElementById('bl-b').innerHTML=built.map((item,i)=>`<div class="bt" onclick="blR(${i})">${item.l.toUpperCase()}</div>`).join('');
+    }
+    c.innerHTML=`<div class="gtit">🧱 Word Builder</div><div class="gsub">Tap letters to spell: <b style="color:var(--gold)">${word.length} letters</b></div>
+    <div id="fb" style="min-height:42px;margin-bottom:7px"></div>
+    <div class="bd" id="bl-b"></div><div class="lts" id="bl-t"></div>
+    <div style="display:flex;gap:9px;margin-top:14px;justify-content:center"><button class="gbtn p" onclick="blC('${word}')">Check ✓</button><button class="gbtn s" onclick="blCl()">Clear</button><button class="gbtn s" onclick="blN(${words.length})">Next →</button></div>`;
+    window.blT=i=>{if(used[i])return;used[i]=true;built.push({l:letters[i],o:i});rf();};
+    window.blR=i=>{const x=built.splice(i,1)[0];used[x.o]=false;rf();};
+    window.blCl=()=>{used=new Array(letters.length).fill(false);built=[];rf();};
+    window.blC=w=>{const a=built.map(b=>b.l).join('');const fb=document.getElementById('fb');if(a===w){fb.innerHTML=`<div class="gfb ok">🎉 "${w}" — perfect!</div>`;if(!done){done=true;awardStar('builder');}}else{fb.innerHTML=`<div class="gfb ng">❌ "${a}" — try again!</div>`;}};
+    window.blN=len=>{idx=(idx+1)%len;render();};
+    rf();
+  }
+  render();
+}
+
+// ── SYLLABLES ──
+function gSyllables(c,words){
+  let idx=0,cnt=0,done=false,correct=0;
+  function render(){
+    const word=words[idx%words.length];cnt=0;
+    const exp=SYLMAP[word.toLowerCase()]||Math.max(1,word.replace(/[^aeiou]/gi,'').length);
+    c.innerHTML=`<div class="gtit">👏 Syllable Clapper</div><div class="gsub">Tap CLAP once for each syllable!</div>
+    <div class="sw">${word}</div>
+    <div id="sc" style="font-family:var(--fd);font-size:32px;color:var(--gold);text-align:center;min-height:46px;margin-bottom:8px">—</div>
+    <div style="display:flex;gap:8px;justify-content:center;margin-bottom:10px"><button class="syb" onclick="clap()">👏 CLAP!</button><button class="gbtn s" onclick="rclap()">Reset</button></div>
+    <div style="display:flex;gap:9px;justify-content:center"><button class="gbtn p" onclick="chkSyl(${exp},'${word}')">Check!</button><button class="gbtn s" onclick="nxtSyl(${words.length})">Next →</button></div>
+    <div id="fb" style="min-height:40px;margin-top:10px"></div>`;
+  }
+  window.clap=()=>{cnt++;document.getElementById('sc').textContent=cnt+' '+'👏'.repeat(Math.min(cnt,8));};
+  window.rclap=()=>{cnt=0;document.getElementById('sc').textContent='—';document.getElementById('fb').innerHTML='';};
+  window.chkSyl=(exp,word)=>{const fb=document.getElementById('fb');if(cnt===exp){correct++;fb.innerHTML=`<div class="gfb ok">🎉 Yes! ${exp} syllable${exp>1?'s':''}!</div>`;if(correct>=3&&!done){done=true;awardStar('syllables');}idx++;setTimeout(render,1200);}else{fb.innerHTML=`<div class="gfb ng">"${word}" has ${exp} syllable${exp>1?'s':''}. You tapped ${cnt}.</div>`;}};
+  window.nxtSyl=len=>{idx=(idx+1)%len;render();};
+  render();
+}
+
+// ── MEMORY ──
+function gMemory(c,words){
+  const uw=words.slice(0,6);
+  const pairs=uw.flatMap((w,i)=>[{id:i*2,val:w,pid:i},{id:i*2+1,val:w.split('').reverse().join('').toUpperCase(),pid:i}]);
+  pairs.sort(()=>Math.random()-.5);
+  let fl=[],mt=[],lk=false;
+  function render(){
+    c.innerHTML=`<div class="gtit">🃏 Memory Match</div><div class="gsub">Match each word to its reversed form!</div>
+    <div style="font-size:13px;color:var(--txt2);margin-bottom:12px">Matched: <span id="mm" style="color:var(--green);font-weight:800">${mt.length}</span>/${uw.length}</div>
+    <div class="mg" id="mg"></div><div id="fb" style="min-height:40px;margin-top:10px"></div>`;paint();
+  }
+  function paint(){const g=document.getElementById('mg');if(!g)return;g.innerHTML=pairs.map(p=>{const iF=fl.includes(p.id)||mt.includes(p.pid);const iM=mt.includes(p.pid);return`<div class="mc${iM?' mt':iF?' fl':' bk'}" onclick="mF(${p.id},${p.pid})">${iF||iM?p.val:'?'}</div>`;}).join('');}
+  window.mF=(id,pid)=>{if(lk||fl.includes(id)||mt.includes(pid))return;fl.push(id);paint();if(fl.length===2){lk=true;const[a,b]=fl;const ca=pairs.find(p=>p.id===a),cb=pairs.find(p=>p.id===b);if(ca&&cb&&ca.pid===cb.pid&&a!==b){mt.push(ca.pid);const m=document.getElementById('mm');if(m)m.textContent=mt.length;fl=[];lk=false;paint();if(mt.length===uw.length){awardStar('memory');setTimeout(()=>{const fb=document.getElementById('fb');if(fb)fb.innerHTML='<div class="gfb ok">🎉 All matched!</div>';},200);}}else{setTimeout(()=>{fl=[];lk=false;paint();},900);}}};
+  render();
+}
+
+// ── MISSING ──
+function gMissing(c,words){
+  let idx=0,score=0,done=false;
+  function render(){
+    const word=words[idx%words.length];const hide=Math.max(1,Math.floor(word.length/3));
+    const pos=[];while(pos.length<hide){const p=Math.floor(Math.random()*word.length);if(!pos.includes(p))pos.push(p);}
+    const disp=word.split('').map((l,i)=>pos.includes(i)?'_':l).join(' ');
+    c.innerHTML=`<div class="gtit">🔍 Missing Letters</div><div class="gsub">Fill in the missing letters!</div>
+    <div style="font-family:var(--fd);font-size:34px;color:var(--teal);text-align:center;letter-spacing:9px;margin:18px 0">${disp.toUpperCase()}</div>
+    <div class="ginr"><input class="gin" id="gin" placeholder="Type the full word..." autocomplete="off"><button class="gbtn p" onclick="chkM('${word}',${words.length})">Check ✓</button><button class="gbtn s" onclick="nxtM(${words.length})">Skip →</button></div>
+    <div id="fb" style="min-height:42px;margin-top:9px"></div><div class="scb" style="margin-top:10px">Score:<span class="sv">${score}</span></div>`;
+    setTimeout(()=>{const i=document.getElementById('gin');if(i){i.focus();i.onkeydown=e=>{if(e.key==='Enter')chkM(word,words.length);};}},50);
+  }
+  window.chkM=(w,len)=>{const i=document.getElementById('gin'),fb=document.getElementById('fb'),a=i.value.trim().toLowerCase();if(a===w){score++;fb.innerHTML=`<div class="gfb ok">🎉 Correct!</div>`;idx++;if(score>=3&&!done){done=true;awardStar('missing');}setTimeout(render,1100);}else{fb.innerHTML=`<div class="gfb ng">❌ Try again!</div>`;i.value='';i.focus();}};
+  window.nxtM=len=>{idx=(idx+1)%len;render();};
+  render();
+}
+
+// ── CATEGORISE ──
+function gCategorise(c,words){
+  const use=words.slice(0,8);const cats=['Short vowel','Long vowel','Blend','Other'];
+  c.innerHTML=`<div class="gtit">🗂️ Categorise Words</div><div class="gsub">Drag words into the correct bucket</div>
+  <div style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px" id="cw">${use.map(w=>`<div class="cati" draggable="true" data-word="${w}" ondragstart="cDS(event)">${w}</div>`).join('')}</div>
+  <div class="catg">${cats.map(cat=>`<div class="catb" ondragover="cDO(event)" ondrop="cDR(event,'${cat}')"><div class="cabt">${cat}</div><div id="bk-${cat.replace(' ','-')}"></div></div>`).join('')}</div>
+  <button class="gbtn p" style="margin-top:12px" onclick="awardStar('categorise');toast('Great sorting!')">✓ Done!</button>`;
+  window.cDS=e=>{e.dataTransfer.setData('text',e.target.dataset.word);window._de=e.target;};
+  window.cDO=e=>{e.preventDefault();e.currentTarget.classList.add('dov');};
+  window.cDR=(e,cat)=>{e.preventDefault();e.currentTarget.classList.remove('dov');const el=window._de;if(!el)return;const w=el.dataset.word;el.remove();const bk=document.getElementById('bk-'+cat.replace(' ','-'));if(bk){const d=document.createElement('div');d.className='cati';d.textContent=w;bk.appendChild(d);}};
+}
+
+// ── BREAKER ──
+function gBreaker(c,words){
+  let idx=0,correct=0,done=false;
+  function render(){
+    const word=words[idx%words.length];
+    c.innerHTML=`<div class="gtit">✂️ Word Breaker</div><div class="gsub">Break into syllables using · between parts</div>
+    <div style="font-family:var(--fd);font-size:38px;color:var(--txt);text-align:center;margin:18px 0">${word}</div>
+    <div class="ginr"><input class="gin" id="gin" placeholder="e.g. rain·bow" autocomplete="off"><button class="gbtn p" onclick="chkBk('${word}','${BRKMAP[word]||word}')">Check ✓</button><button class="gbtn s" onclick="nxtBk(${words.length})">Next →</button></div>
+    <div style="font-size:11px;color:var(--txt2);text-align:center;margin-top:7px">Use · or - between syllables</div>
+    <div id="fb" style="min-height:42px;margin-top:9px"></div>`;
+    setTimeout(()=>{const i=document.getElementById('gin');if(i)i.focus();},50);
+  }
+  window.chkBk=(w,cor)=>{const a=document.getElementById('gin').value.trim().toLowerCase().replace(/-/g,'·');const fb=document.getElementById('fb');if(a===cor||a===w){correct++;fb.innerHTML=`<div class="gfb ok">🎉 "${cor}"!</div>`;if(correct>=3&&!done){done=true;awardStar('breaker');}idx++;setTimeout(render,1200);}else{fb.innerHTML=`<div class="gfb ng">Try: <b style="color:var(--gold)">${cor}</b></div>`;}};
+  window.nxtBk=len=>{idx=(idx+1)%len;render();};
+  render();
+}
+
+// ── JOINER ──
+function gJoiner(c,words){
+  const pairs=[['rain','bow'],['sun','shine'],['out','side'],['birth','day'],['door','bell'],['star','fish'],['ear','ring'],['foot','ball'],['sea','shell'],['fire','work']];let idx=0,done=false;
+  function render(){
+    const[a,b]=pairs[idx%pairs.length];
+    c.innerHTML=`<div class="gtit">🔗 Word Joiner</div><div class="gsub">Join the parts into a compound word!</div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin:20px 0">
+      <div style="font-family:var(--fd);font-size:28px;color:var(--purple);background:rgba(168,85,247,.15);border:2px solid var(--purple);border-radius:12px;padding:10px 18px">${a.toUpperCase()}</div>
+      <div style="font-size:24px">+</div>
+      <div style="font-family:var(--fd);font-size:28px;color:var(--coral);background:rgba(255,107,107,.15);border:2px solid var(--coral);border-radius:12px;padding:10px 18px">${b.toUpperCase()}</div>
+    </div>
+    <div class="ginr"><input class="gin" id="gin" placeholder="Joined word..." autocomplete="off"><button class="gbtn p" onclick="chkJn('${a+b}')">Check ✓</button><button class="gbtn s" onclick="nxtJn()">Next →</button></div>
+    <div id="fb" style="min-height:42px;margin-top:9px"></div>`;
+    setTimeout(()=>{const i=document.getElementById('gin');if(i){i.focus();i.onkeydown=e=>{if(e.key==='Enter')chkJn(a+b);};}},50);
+  }
+  window.chkJn=ans=>{const v=document.getElementById('gin').value.trim().toLowerCase(),fb=document.getElementById('fb');if(v===ans){fb.innerHTML=`<div class="gfb ok">🎉 "${ans}"!</div>`;if(!done){done=true;awardStar('joiner');}idx++;setTimeout(render,1100);}else{fb.innerHTML=`<div class="gfb ng">❌ Not quite!</div>`;document.getElementById('gin').value='';}};
+  window.nxtJn=()=>{idx=(idx+1)%pairs.length;render();};
+  render();
+}
+
+// ── SENTENCES ──
+function gSentences(c,words){
+  let idx=0,done=false;
+  function render(){
+    const word=words[idx%words.length];
+    c.innerHTML=`<div class="gtit">✏️ Sentence Writing</div><div class="gsub">Write a sentence using this word!</div>
+    <div style="font-family:var(--fd);font-size:36px;color:var(--gold);text-align:center;margin:18px 0">${word}</div>
+    <textarea class="admta" id="si" placeholder="Write your sentence here..." style="width:100%;min-height:72px;margin-bottom:10px"></textarea>
+    <div style="display:flex;gap:9px"><button class="gbtn p" onclick="saveSent('${word}',${words.length})">Save ✓</button><button class="gbtn s" onclick="nxtSent(${words.length})">Next →</button></div>
+    <div id="fb" style="min-height:42px;margin-top:9px"></div>`;
+  }
+  window.saveSent=(w,len)=>{const v=document.getElementById('si').value.trim();if(!v)return;document.getElementById('fb').innerHTML=`<div class="gfb ok">🌟 Great sentence!</div>`;if(!done){done=true;awardStar('sentences');}idx++;setTimeout(render,1400);};
+  window.nxtSent=len=>{idx=(idx+1)%len;render();};
+  render();
+}
+
+// ── TOAST ──
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+
+// ── INIT ──
 initStars();
-renderWeekPills('week-pills',(w,b)=>{ STATE.week=w; document.querySelectorAll('#week-pills .tw-pill').forEach(p=>p.classList.remove('active')); b.classList.add('active'); renderHome(); },1);
-renderHome();
-document.getElementById('custom-word-input')?.addEventListener('keydown',e=>{ if(e.key==='Enter') addCustomWord(); });
+mkWeekPills('week-pills',(w,b)=>{ S.week=w; attachWeekListener(); refreshAll(); },1);
+// Start week listener for default view
+document.addEventListener('fbReady', () => attachWeekListener());
+document.getElementById('cust-in')?.addEventListener('keydown',e=>{if(e.key==='Enter')addCust();});
 </script>
 </body>
 </html>
