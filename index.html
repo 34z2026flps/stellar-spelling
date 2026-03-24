@@ -459,6 +459,12 @@ h2.vt{font-family:var(--fd);font-size:24px;color:var(--txt);margin-bottom:5px}
       <div class="ac" id="ac-breaker" onclick="launch('breaker')"><div class="ai">✂️</div><div class="an">Word Breaker</div><div class="ad">Break into syllables</div></div>
       <div class="ac" id="ac-joiner" onclick="launch('joiner')"><div class="ai">🔗</div><div class="an">Word Joiner</div><div class="ad">Combine into words</div></div>
       <div class="ac" id="ac-sentences" onclick="launch('sentences')"><div class="ai">✏️</div><div class="an">Sentence Write</div><div class="ad">Use words in sentences</div></div>
+      <div class="ac" id="ac-alpha" onclick="launch('alpha')"><div class="ai">🔤</div><div class="an">Alphabetical Order</div><div class="ad">Sort words A–Z</div></div>
+      <div class="ac" id="ac-pyramid" onclick="launch('pyramid')"><div class="ai">🔺</div><div class="an">Pyramid Spelling</div><div class="ad">Build words letter by letter</div></div>
+      <div class="ac" id="ac-vowcons" onclick="launch('vowcons')"><div class="ai">🎨</div><div class="an">Vowels &amp; Consonants</div><div class="ad">Colour-code each letter</div></div>
+      <div class="ac" id="ac-wordsearch" onclick="launch('wordsearch')"><div class="ai">🔎</div><div class="an">Word Search</div><div class="ad">Find words in the grid</div></div>
+      <div class="ac" id="ac-crossword" onclick="launch('crossword')"><div class="ai">✏️</div><div class="an">Crossword</div><div class="ad">Fill in the grid</div></div>
+      <div class="ac" id="ac-wordle" onclick="launch('wordle')"><div class="ai">🟩</div><div class="an">Wordle</div><div class="ad">Guess the spelling word</div></div>
     </div>
     <div class="gc" id="game-container">
       <div style="text-align:center;padding:36px 0;color:var(--txt2)"><div style="font-size:44px;margin-bottom:10px">🎮</div><div style="font-family:var(--fd);font-size:18px">Pick an activity above to begin!</div></div>
@@ -610,8 +616,8 @@ const ANIMALS = ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨',
 const SYLMAP = {road:1,coat:1,show:1,below:2,float:1,groan:1,elbow:2,narrow:2,shadow:2,throat:1,rainbow:2,window:2,light:1,might:1,night:1,right:1,bright:1,delight:2,action:2,nation:2,station:3,mention:2,fraction:2,photograph:3,telescope:3,microscope:3,biography:4,geography:4,transport:2,disrupt:2,audible:3,interrupt:3,Wednesday:3,different:3,interesting:4,separate:3,running:2,jumping:2,hopping:2,sitting:2};
 const BRKMAP = {road:'road',coat:'coat',show:'show',below:'be·low',float:'float',groan:'groan',elbow:'el·bow',narrow:'nar·row',shadow:'sha·dow',throat:'throat',rainbow:'rain·bow',window:'win·dow',action:'ac·tion',station:'sta·tion',mention:'men·tion',fraction:'frac·tion',photograph:'pho·to·graph',telescope:'tel·e·scope',microscope:'mi·cro·scope',biography:'bi·og·ra·phy',transport:'trans·port',interrupt:'in·ter·rupt',Wednesday:'Wed·nes·day',different:'dif·fer·ent',interesting:'in·ter·est·ing',separate:'sep·a·rate'};
 
-const ACT_NAMES = {findsound:'Find the Sound',scramble:'Word Scramble',builder:'Word Builder',syllables:'Syllables',categorise:'Categorise',memory:'Memory Match',missing:'Missing Letters',breaker:'Word Breaker',joiner:'Word Joiner',sentences:'Sentence Write'};
-const ACT_ICONS = {findsound:'🔎',scramble:'🔀',builder:'🧱',syllables:'👏',categorise:'🗂️',memory:'🃏',missing:'🔍',breaker:'✂️',joiner:'🔗',sentences:'✏️'};
+const ACT_NAMES = {findsound:'Find the Sound',scramble:'Word Scramble',builder:'Word Builder',syllables:'Syllables',categorise:'Categorise',memory:'Memory Match',missing:'Missing Letters',breaker:'Word Breaker',joiner:'Word Joiner',sentences:'Sentence Write',alpha:'Alphabetical Order',pyramid:'Pyramid Spelling',vowcons:'Vowels & Consonants',wordsearch:'Word Search',crossword:'Crossword',wordle:'Wordle'};
+const ACT_ICONS = {findsound:'🔎',scramble:'🔀',builder:'🧱',syllables:'👏',categorise:'🗂️',memory:'🃏',missing:'🔍',breaker:'✂️',joiner:'🔗',sentences:'✏️',alpha:'🔤',pyramid:'🔺',vowcons:'🎨',wordsearch:'🔎',crossword:'✏️',wordle:'🟩'};
 
 // App state
 let S = { group:'comets', term:1, week:1, customWords:[], adminGroup:'comets', adminTerm:1, adminWeek:1 };
@@ -1099,6 +1105,12 @@ function launch(id) {
   else if (id==='breaker') gBreaker(c,words);
   else if (id==='joiner') gJoiner(c,words);
   else if (id==='sentences') gSentences(c,words);
+  else if (id==='alpha') gAlpha(c,words);
+  else if (id==='pyramid') gPyramid(c,words);
+  else if (id==='vowcons') gVowCons(c,words);
+  else if (id==='wordsearch') gWordSearch(c,words);
+  else if (id==='crossword') gCrossword(c,words);
+  else if (id==='wordle') gWordle(c,words);
 }
 
 // ── FIND THE SOUND ──
@@ -1349,6 +1361,509 @@ function gSentences(c,words){
   window.saveSent=(w,len)=>{const v=document.getElementById('si').value.trim();if(!v)return;document.getElementById('fb').innerHTML=`<div class="gfb ok">🌟 Great sentence!</div>`;if(!done){done=true;awardStar('sentences');}idx++;setTimeout(render,1400);};
   window.nxtSent=len=>{idx=(idx+1)%len;render();};
   render();
+}
+
+// ── ALPHABETICAL ORDER ──
+function gAlpha(c,words){
+  const use=words.slice(0,10).map(w=>w.toLowerCase());
+  let shuffled=[...use].sort(()=>Math.random()-.5);
+  let order=[];
+  let done=false;
+  function render(){
+    c.innerHTML=`<div class="gtit">🔤 Alphabetical Order</div>
+    <div class="gsub">Drag the words into A–Z order, or tap them one by one in alphabetical order!</div>
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;color:var(--txt2);font-weight:700;text-transform:uppercase;margin-bottom:8px">Tap words in A–Z order:</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px" id="alpha-pool">${shuffled.map((w,i)=>`<div class="wc" id="aw-${i}" onclick="alphaTap('${w}',${i})" style="cursor:pointer">${w}</div>`).join('')}</div>
+    </div>
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;color:var(--txt2);font-weight:700;text-transform:uppercase;margin-bottom:8px">Your order:</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;min-height:40px;padding:10px;background:rgba(255,255,255,.04);border-radius:12px;border:1.5px dashed var(--bdr)" id="alpha-order"></div>
+    </div>
+    <div style="display:flex;gap:9px;flex-wrap:wrap">
+      <button class="gbtn p" onclick="alphaCheck()">Check Order ✓</button>
+      <button class="gbtn s" onclick="alphaReset()">Reset</button>
+    </div>
+    <div id="fb" style="min-height:42px;margin-top:10px"></div>`;
+  }
+  window.alphaTap=function(w,i){
+    if(order.includes(w)) return;
+    order.push(w);
+    const el=document.getElementById('aw-'+i);
+    if(el){el.style.opacity='.3';el.style.pointerEvents='none';}
+    const ob=document.getElementById('alpha-order');
+    if(ob){const d=document.createElement('div');d.className='wc';d.style.background='rgba(168,85,247,.2)';d.style.borderColor='var(--purple)';d.style.color='var(--purple)';d.textContent=(order.length)+'. '+w;ob.appendChild(d);}
+    if(order.length===use.length) alphaCheck();
+  };
+  window.alphaCheck=function(){
+    const correct=[...use].sort();
+    const fb=document.getElementById('fb');
+    let allRight=order.every((w,i)=>w===correct[i]);
+    if(allRight){
+      fb.innerHTML=`<div class="gfb ok">🎉 Perfect A–Z order!</div>`;
+      if(!done){done=true;awardStar('alpha');}
+    } else {
+      fb.innerHTML=`<div class="gfb ng">Not quite! Correct order: <b style="color:var(--gold)">${correct.join(', ')}</b></div>`;
+    }
+  };
+  window.alphaReset=function(){order=[];shuffled=[...use].sort(()=>Math.random()-.5);render();};
+  render();
+}
+
+// ── PYRAMID SPELLING ──
+function gPyramid(c,words){
+  let idx=0;
+  function render(){
+    const word=words[idx%words.length].toLowerCase();
+    const rows=[];
+    for(let i=1;i<=word.length;i++) rows.push(word.slice(0,i));
+    c.innerHTML=`<div class="gtit">🔺 Pyramid Spelling</div>
+    <div class="gsub">The pyramid builds one letter at a time — type each row!</div>
+    <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
+      <div style="flex:1;min-width:180px">
+        <div style="font-size:11px;color:var(--txt2);font-weight:700;text-transform:uppercase;margin-bottom:10px">Build the pyramid:</div>
+        <div id="pyr-rows" style="display:flex;flex-direction:column;gap:6px">${rows.map((r,i)=>`
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="display:flex;gap:4px;justify-content:center;width:${word.length*36}px">
+              ${Array.from({length:word.length},(_,j)=>`<div style="width:32px;height:32px;border-radius:7px;border:2px solid ${j<r.length?'var(--teal)':'var(--bdr)'};background:${j<r.length?'rgba(78,205,196,.18)':'rgba(255,255,255,.03)'};display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:18px;color:${j<r.length?'var(--teal)':'var(--txt2)'}">${j<r.length?r[j].toUpperCase():'·'}</div>`).join('')}
+            </div>
+            <input class="gin" id="pyr-${i}" placeholder="type row ${i+1}..." style="width:140px;font-size:14px;padding:7px 10px" autocomplete="off" onkeydown="if(event.key==='Enter')pyrCheck(${i},'${r}',${i===rows.length-1})">
+            <span id="pyr-fb-${i}" style="font-size:18px;min-width:22px"></span>
+          </div>`).join('')}
+        </div>
+      </div>
+      <div style="min-width:130px">
+        <div style="font-size:11px;color:var(--txt2);font-weight:700;text-transform:uppercase;margin-bottom:10px">Target word:</div>
+        <div style="font-family:var(--fd);font-size:28px;color:var(--gold)">${word}</div>
+        <div style="font-size:12px;color:var(--txt2);margin-top:6px">${word.length} letters<br>${rows.length} rows</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:9px;margin-top:16px;flex-wrap:wrap">
+      <button class="gbtn p" onclick="pyrCheckAll('${word}',${words.length})">Check All ✓</button>
+      <button class="gbtn s" onclick="pyrNext(${words.length})">Next Word →</button>
+    </div>
+    <div id="fb" style="min-height:36px;margin-top:10px"></div>`;
+    setTimeout(()=>{const f=document.getElementById('pyr-0');if(f)f.focus();},60);
+  }
+  window.pyrCheck=function(i,expected,isLast){
+    const inp=document.getElementById('pyr-'+i);
+    const fbEl=document.getElementById('pyr-fb-'+i);
+    if(!inp||!fbEl) return;
+    const val=inp.value.trim().toLowerCase();
+    if(val===expected){fbEl.textContent='✅';inp.style.borderColor='var(--green)';if(isLast){awardStar('pyramid');document.getElementById('fb').innerHTML='<div class="gfb ok">🎉 Full pyramid complete!</div>';}else{const next=document.getElementById('pyr-'+(i+1));if(next)next.focus();}}
+    else{fbEl.textContent='❌';inp.style.borderColor='var(--coral)';}
+  };
+  window.pyrCheckAll=function(word,len){
+    let allOk=true;
+    for(let i=0;i<word.length;i++){
+      const inp=document.getElementById('pyr-'+i);const fbEl=document.getElementById('pyr-fb-'+i);
+      if(!inp)continue;
+      const expected=word.slice(0,i+1);
+      const val=inp.value.trim().toLowerCase();
+      if(val===expected){if(fbEl)fbEl.textContent='✅';inp.style.borderColor='var(--green)';}
+      else{if(fbEl)fbEl.textContent='❌';inp.style.borderColor='var(--coral)';allOk=false;}
+    }
+    const fb=document.getElementById('fb');
+    if(allOk){fb.innerHTML='<div class="gfb ok">🎉 Perfect pyramid!</div>';awardStar('pyramid');}
+    else{fb.innerHTML='<div class="gfb ng">Some rows need fixing — check the ❌ rows above</div>';}
+  };
+  window.pyrNext=function(len){idx=(idx+1)%len;render();};
+  render();
+}
+
+// ── VOWELS & CONSONANTS ──
+function gVowCons(c,words){
+  let idx=0;const VOWELS='aeiou';
+  let revealed=false;
+  function render(){
+    const word=words[idx%words.length].toLowerCase();
+    const letters=word.split('');
+    c.innerHTML=`<div class="gtit">🎨 Vowels &amp; Consonants</div>
+    <div class="gsub">Tap each letter — <span style="color:#f87171">red = vowel</span>, <span style="color:#60a5fa">blue = consonant</span>. Then check!</div>
+    <div style="font-family:var(--fd);font-size:13px;color:var(--txt2);margin-bottom:14px">Word ${idx%words.length+1} of ${words.length}</div>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:20px" id="vc-tiles">
+      ${letters.map((l,i)=>`<div id="vct-${i}" onclick="vcTap(${i},'${l}')"
+        style="width:50px;height:60px;border-radius:12px;border:2.5px solid var(--bdr);background:rgba(255,255,255,.06);
+        display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;transition:all .2s;user-select:none">
+        <span style="font-family:var(--fd);font-size:26px;color:var(--txt)">${l.toUpperCase()}</span>
+        <span id="vct-label-${i}" style="font-size:9px;font-weight:800;text-transform:uppercase;color:var(--txt2)">?</span>
+      </div>`).join('')}
+    </div>
+    <div style="display:flex;gap:9px;flex-wrap:wrap;justify-content:center;margin-bottom:12px">
+      <button class="gbtn p" onclick="vcCheck('${word}')">Check ✓</button>
+      <button class="gbtn s" onclick="vcReveal('${word}')">Reveal</button>
+      <button class="gbtn s" onclick="vcNext(${words.length})">Next →</button>
+    </div>
+    <div style="display:flex;gap:14px;justify-content:center;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--txt2)"><div style="width:14px;height:14px;border-radius:4px;background:#f87171"></div>Vowel (a,e,i,o,u)</div>
+      <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--txt2)"><div style="width:14px;height:14px;border-radius:4px;background:#60a5fa"></div>Consonant</div>
+    </div>
+    <div id="fb" style="min-height:40px"></div>`;
+    // Track student selections
+    window._vcSelections = {};
+  }
+  window.vcTap=function(i,l){
+    const isV=VOWELS.includes(l);
+    const current=window._vcSelections[i];
+    // Cycle: none → vowel → consonant → none
+    let next;
+    if(!current) next='vowel';
+    else if(current==='vowel') next='consonant';
+    else next=null;
+    window._vcSelections[i]=next;
+    const tile=document.getElementById('vct-'+i);
+    const label=document.getElementById('vct-label-'+i);
+    if(!tile||!label) return;
+    if(next==='vowel'){tile.style.background='rgba(248,113,113,.25)';tile.style.borderColor='#f87171';label.style.color='#f87171';label.textContent='vowel';}
+    else if(next==='consonant'){tile.style.background='rgba(96,165,250,.25)';tile.style.borderColor='#60a5fa';label.style.color='#60a5fa';label.textContent='cons.';}
+    else{tile.style.background='rgba(255,255,255,.06)';tile.style.borderColor='var(--bdr)';label.style.color='var(--txt2)';label.textContent='?';}
+  };
+  window.vcCheck=function(word){
+    const letters=word.split('');let correct=0,total=letters.length;
+    letters.forEach((l,i)=>{
+      const isV=VOWELS.includes(l);
+      const sel=window._vcSelections[i];
+      const tile=document.getElementById('vct-'+i);
+      const label=document.getElementById('vct-label-'+i);
+      const correct_type=isV?'vowel':'consonant';
+      if(sel===correct_type){correct++;if(tile)tile.style.outline='3px solid var(--green)';}
+      else{if(tile)tile.style.outline='3px solid var(--coral)';}
+    });
+    const fb=document.getElementById('fb');
+    if(correct===total){fb.innerHTML=`<div class="gfb ok">🎉 Perfect! All ${total} letters correctly identified!</div>`;awardStar('vowcons');}
+    else{fb.innerHTML=`<div class="gfb ng">${correct}/${total} correct — green = right, red outline = wrong. Try again!</div>`;}
+  };
+  window.vcReveal=function(word){
+    word.split('').forEach((l,i)=>{
+      const isV=VOWELS.includes(l);
+      const tile=document.getElementById('vct-'+i);const label=document.getElementById('vct-label-'+i);
+      if(isV){if(tile){tile.style.background='rgba(248,113,113,.3)';tile.style.borderColor='#f87171';}if(label){label.style.color='#f87171';label.textContent='vowel';}}
+      else{if(tile){tile.style.background='rgba(96,165,250,.3)';tile.style.borderColor='#60a5fa';}if(label){label.style.color='#60a5fa';label.textContent='cons.';}}
+    });
+  };
+  window.vcNext=function(len){idx=(idx+1)%len;render();};
+  render();
+}
+
+// ── WORD SEARCH ──
+function gWordSearch(c,words){
+  const SIZE=12;
+  const useWords=words.filter(w=>w.length<=SIZE && w.length>=3).slice(0,8).map(w=>w.toUpperCase());
+  const grid=Array.from({length:SIZE},()=>Array(SIZE).fill(''));
+  const placed=[];
+  const DIRS=[[0,1],[1,0],[1,1],[0,-1],[-1,0],[-1,-1],[1,-1],[-1,1]];
+
+  function placeWord(word){
+    const dirs=[...DIRS].sort(()=>Math.random()-.5);
+    for(let attempt=0;attempt<80;attempt++){
+      const dr=dirs[attempt%dirs.length];
+      const r=Math.floor(Math.random()*SIZE);
+      const co=Math.floor(Math.random()*SIZE);
+      let ok=true;const cells=[];
+      for(let i=0;i<word.length;i++){
+        const nr=r+dr[0]*i,nc=co+dr[1]*i;
+        if(nr<0||nr>=SIZE||nc<0||nc>=SIZE){ok=false;break;}
+        if(grid[nr][nc]&&grid[nr][nc]!==word[i]){ok=false;break;}
+        cells.push([nr,nc]);
+      }
+      if(ok){cells.forEach(([nr,nc],i)=>grid[nr][nc]=word[i]);placed.push({word,cells});return true;}
+    }
+    return false;
+  }
+  useWords.forEach(w=>placeWord(w));
+  const ALPHA='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  for(let r=0;r<SIZE;r++)for(let co=0;co<SIZE;co++)if(!grid[r][co])grid[r][co]=ALPHA[Math.floor(Math.random()*26)];
+
+  let selecting=false,selStart=null,selCells=new Set(),foundWords=new Set(),allFound=false;
+
+  function cellKey(r,co){return r+','+co;}
+  function renderGrid(){
+    return `<div style="display:inline-grid;grid-template-columns:repeat(${SIZE},1fr);gap:2px;background:rgba(255,255,255,.04);padding:10px;border-radius:14px;border:1.5px solid var(--bdr);user-select:none">
+      ${grid.map((row,r)=>row.map((cell,co)=>{
+        const key=cellKey(r,co);
+        const isSel=selCells.has(key);
+        const isFound=[...foundWords].some(fw=>placed.find(p=>p.word===fw)?.cells.some(([fr,fc])=>fr===r&&fc===co));
+        const bg=isFound?'rgba(34,197,94,.35)':isSel?'rgba(78,205,196,.35)':'transparent';
+        const bdr=isFound?'var(--green)':isSel?'var(--teal)':'transparent';
+        return `<div id="wsc-${r}-${co}" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:15px;color:var(--txt);background:${bg};border:1.5px solid ${bdr};border-radius:5px;cursor:pointer;transition:all .15s"
+          onmousedown="wsStart(${r},${co})" onmouseover="wsDrag(${r},${co})" onmouseup="wsEnd(${r},${co})"
+          ontouchstart="wsStart(${r},${co})" ontouchend="wsEnd(${r},${co})">${cell}</div>`;
+      }).join('')).join('')}
+    </div>`;
+  }
+  function renderWordList(){
+    return useWords.map(w=>`<div style="font-size:13px;font-weight:700;padding:4px 10px;border-radius:8px;${foundWords.has(w)?'text-decoration:line-through;color:var(--green);background:rgba(34,197,94,.1)':'color:var(--txt2)'}">${w}</div>`).join('');
+  }
+  function build(){
+    c.innerHTML=`<div class="gtit">🔎 Word Search</div>
+    <div class="gsub">Find all the spelling words hidden in the grid! Click and drag to select.</div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
+      <div id="ws-grid">${renderGrid()}</div>
+      <div>
+        <div style="font-size:11px;color:var(--txt2);font-weight:700;text-transform:uppercase;margin-bottom:8px">Find these words:</div>
+        <div id="ws-wl" style="display:flex;flex-direction:column;gap:4px">${renderWordList()}</div>
+        <div style="margin-top:14px;font-size:13px;color:var(--txt2)">Found: <span id="ws-count" style="color:var(--gold);font-weight:800">${foundWords.size}</span>/${useWords.length}</div>
+        <button class="gbtn s" style="margin-top:10px;font-size:12px" onclick="wsNew()">New Puzzle</button>
+      </div>
+    </div>
+    <div id="fb" style="min-height:36px;margin-top:10px"></div>`;
+  }
+  window.wsStart=function(r,co){selecting=true;selStart=[r,co];selCells=new Set([cellKey(r,co)]);updateGrid();};
+  window.wsDrag=function(r,co){
+    if(!selecting||!selStart) return;
+    const[sr,sc]=selStart;const dr=r-sr,dc=co-sc;
+    const len=Math.max(Math.abs(dr),Math.abs(dc));
+    if(len===0){selCells=new Set([cellKey(sr,sc)]);updateGrid();return;}
+    const nr=dr===0?0:(dr>0?1:-1),nc=dc===0?0:(dc>0?1:-1);
+    selCells=new Set();
+    for(let i=0;i<=len;i++) selCells.add(cellKey(sr+nr*i,sc+nc*i));
+    updateGrid();
+  };
+  window.wsEnd=function(){
+    selecting=false;
+    // Check if selection matches any word
+    const selArr=[...selCells].map(k=>{const[r,c]=k.split(',').map(Number);return[r,c];});
+    placed.forEach(({word,cells})=>{
+      if(foundWords.has(word)) return;
+      const match=cells.length===selArr.length&&cells.every(([r,co])=>selCells.has(cellKey(r,co)));
+      const matchRev=cells.length===selArr.length&&[...cells].reverse().every(([r,co])=>selCells.has(cellKey(r,co)));
+      if(match||matchRev){foundWords.add(word);toast('Found: '+word+' ✓');}
+    });
+    selCells=new Set();
+    const cnt=document.getElementById('ws-count');if(cnt)cnt.textContent=foundWords.size;
+    document.getElementById('ws-wl').innerHTML=renderWordList();
+    updateGrid();
+    if(foundWords.size===useWords.length&&!allFound){allFound=true;document.getElementById('fb').innerHTML='<div class="gfb ok">🎉 All words found!</div>';awardStar('wordsearch');}
+  };
+  function updateGrid(){const g=document.getElementById('ws-grid');if(g)g.innerHTML=renderGrid();}
+  window.wsNew=function(){gWordSearch(c,words);};
+  build();
+}
+
+// ── CROSSWORD ──
+function gCrossword(c,words){
+  const useWords=words.filter(w=>w.length>=3&&w.length<=10).slice(0,6).map(w=>w.toLowerCase());
+  if(useWords.length<2){c.innerHTML='<div style="padding:30px;text-align:center;color:var(--txt2)">Need at least 2 words of 3–10 letters for a crossword.</div>';return;}
+  const SIZE=14;const grid=Array.from({length:SIZE},()=>Array(SIZE).fill(null));
+  const placed=[];
+
+  function tryPlace(word,r,co,horiz){
+    const len=word.length;
+    // Check bounds
+    if(horiz&&co+len>SIZE) return false;
+    if(!horiz&&r+len>SIZE) return false;
+    // Check cells
+    let intersects=false;
+    for(let i=0;i<len;i++){
+      const cr=horiz?r:r+i,cc=horiz?co+i:co;
+      const cell=grid[cr][cc];
+      if(cell===null){
+        // Check neighbours (no adjacent parallel words)
+        const checkCells=horiz?[[cr-1,cc],[cr+1,cc]]:[[cr,cc-1],[cr,cc+1]];
+        for(const[nr,nc]of checkCells){if(nr>=0&&nr<SIZE&&nc>=0&&nc<SIZE&&grid[nr][nc]!==null&&!(placed.some(p=>p.cells.some(([pr,pc])=>pr===nr&&pc===nc))))return false;}
+      } else if(cell===word[i]){intersects=true;}
+      else return false;
+    }
+    // First word doesn't need to intersect, others do
+    if(placed.length>0&&!intersects) return false;
+    // Check ends
+    if(horiz){if(co>0&&grid[r][co-1]!==null)return false;if(co+len<SIZE&&grid[r][co+len]!==null)return false;}
+    else{if(r>0&&grid[r-1][co]!==null)return false;if(r+len<SIZE&&grid[r+len][co]!==null)return false;}
+    // Place
+    const cells=[];
+    for(let i=0;i<len;i++){const cr=horiz?r:r+i,cc=horiz?co+i:co;grid[cr][cc]=word[i];cells.push([cr,cc]);}
+    placed.push({word,cells,r,co,horiz,num:placed.length+1});
+    return true;
+  }
+
+  // Place first word in centre
+  const first=useWords[0];const midR=Math.floor(SIZE/2),midC=Math.floor((SIZE-first.length)/2);
+  tryPlace(first,midR,midC,true);
+  // Place remaining words
+  for(let wi=1;wi<useWords.length;wi++){
+    const word=useWords[wi];let ok=false;
+    for(const p of placed){
+      if(ok) break;
+      for(let pi=0;pi<p.word.length&&!ok;pi++){
+        for(let wi2=0;wi2<word.length&&!ok;wi2++){
+          if(p.word[pi]===word[wi2]){
+            const[pr,pc]=p.cells[pi];
+            if(p.horiz){const nr=pr-wi2,nc=pc;if(nr>=0)ok=tryPlace(word,nr,nc,false);}
+            else{const nr=pr,nc=pc-wi2;if(nc>=0)ok=tryPlace(word,nr,nc,true);}
+          }
+        }
+      }
+    }
+  }
+
+  let userGrid={};let done=false;
+  function renderCW(){
+    // Find bounds
+    let minR=SIZE,maxR=0,minC=SIZE,maxC=0;
+    placed.forEach(p=>p.cells.forEach(([r,co])=>{minR=Math.min(minR,r);maxR=Math.max(maxR,r);minC=Math.min(minC,co);maxC=Math.max(maxC,co);}));
+    const rows=[];
+    for(let r=minR;r<=maxR;r++){
+      const cells=[];
+      for(let co=minC;co<=maxC;co++){
+        const letter=grid[r][co];
+        const key=r+','+co;
+        const num=placed.find(p=>p.cells[0][0]===r&&p.cells[0][1]===co)?.num;
+        if(letter===null){cells.push(`<div style="width:32px;height:32px;background:var(--navy)"></div>`);}
+        else{
+          const val=userGrid[key]||'';
+          const isCorrect=val.toLowerCase()===letter;
+          cells.push(`<div style="position:relative;width:32px;height:32px">
+            ${num?`<div style="position:absolute;top:1px;left:2px;font-size:8px;font-weight:900;color:var(--gold);z-index:1">${num}</div>`:''}
+            <input maxlength="1" value="${val}" id="cw-${key}"
+              style="width:32px;height:32px;background:${val?(isCorrect?'rgba(34,197,94,.2)':'rgba(255,107,107,.15)'):'rgba(255,255,255,.07)'};
+              border:1.5px solid ${val?(isCorrect?'var(--green)':'var(--coral)'):'var(--bdr)'};
+              border-radius:5px;text-align:center;font-family:var(--fd);font-size:16px;font-weight:700;
+              color:var(--txt);outline:none;padding:0;cursor:text;text-transform:uppercase"
+              oninput="cwInput('${key}',this.value,'${letter}',event)">
+          </div>`);
+        }
+      }
+      rows.push(`<div style="display:flex;gap:2px">${cells.join('')}</div>`);
+    }
+    return rows.join('');
+  }
+  function renderClues(){
+    const across=placed.filter(p=>p.horiz).map(p=>`<div style="font-size:12px;margin-bottom:4px;color:var(--txt2)"><b style="color:var(--gold)">${p.num}A.</b> ${p.word.length}-letter word (${p.word.length} letters)</div>`).join('');
+    const down=placed.filter(p=>!p.horiz).map(p=>`<div style="font-size:12px;margin-bottom:4px;color:var(--txt2)"><b style="color:var(--gold)">${p.num}D.</b> ${p.word.length}-letter word (${p.word.length} letters)</div>`).join('');
+    return `<div style="margin-bottom:8px"><div style="font-size:11px;font-weight:800;color:var(--txt2);text-transform:uppercase;margin-bottom:4px">Across</div>${across}</div>
+    <div><div style="font-size:11px;font-weight:800;color:var(--txt2);text-transform:uppercase;margin-bottom:4px">Down</div>${down}</div>`;
+  }
+  function build(){
+    c.innerHTML=`<div class="gtit">✏️ Crossword</div>
+    <div class="gsub">Fill in the crossword using your spelling words. Numbers show where each word starts.</div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
+      <div>
+        <div id="cw-grid" style="display:flex;flex-direction:column;gap:2px;background:var(--mid);padding:8px;border-radius:12px;border:1.5px solid var(--bdr)">${renderCW()}</div>
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+          <button class="gbtn p" onclick="cwCheck()">Check Answers ✓</button>
+          <button class="gbtn s" onclick="cwReveal()">Reveal</button>
+          <button class="gbtn s" onclick="gCrossword(c,words)">New Puzzle</button>
+        </div>
+      </div>
+      <div style="min-width:160px">${renderClues()}
+        <div style="margin-top:12px;font-size:11px;color:var(--txt2)">Hint: words are from your spelling list!</div>
+        <div style="margin-top:6px;display:flex;flex-direction:column;gap:3px">${placed.map(p=>`<div style="font-size:11px;color:rgba(255,255,255,.25)">${p.num}${p.horiz?'A':'D'}: ${'_'.repeat(p.word.length)}</div>`).join('')}</div>
+      </div>
+    </div>
+    <div id="fb" style="min-height:36px;margin-top:10px"></div>`;
+  }
+  window.cwInput=function(key,val,letter,e){
+    userGrid[key]=val.toLowerCase();
+    const el=document.getElementById('cw-'+key);
+    if(el){el.style.background=val?(val.toLowerCase()===letter?'rgba(34,197,94,.2)':'rgba(255,107,107,.15)'):'rgba(255,255,255,.07)';el.style.borderColor=val?(val.toLowerCase()===letter?'var(--green)':'var(--coral)'):'var(--bdr)';}
+    // Auto advance
+    if(val&&e){const allCwKeys=Object.keys(userGrid);const inputs=[...document.querySelectorAll('[id^="cw-"]')];const idx=inputs.indexOf(document.getElementById('cw-'+key));if(idx<inputs.length-1)inputs[idx+1].focus();}
+  };
+  window.cwCheck=function(){
+    let correct=0,total=0;
+    placed.forEach(p=>p.cells.forEach(([r,co])=>{total++;const key=r+','+co;if((userGrid[key]||'')===grid[r][co])correct++;}));
+    const fb=document.getElementById('fb');
+    if(correct===total){fb.innerHTML='<div class="gfb ok">🎉 Crossword complete!</div>';if(!done){done=true;awardStar('crossword');}}
+    else{fb.innerHTML=`<div class="gfb ng">${correct}/${total} letters correct — keep going!</div>`;}
+  };
+  window.cwReveal=function(){placed.forEach(p=>p.cells.forEach(([r,co])=>{const key=r+','+co;userGrid[key]=grid[r][co];const el=document.getElementById('cw-'+key);if(el){el.value=grid[r][co].toUpperCase();el.style.background='rgba(34,197,94,.2)';el.style.borderColor='var(--green)';}}));};
+  build();
+}
+
+// ── WORDLE ──
+function gWordle(c,words){
+  const eligible=words.filter(w=>w.length>=4&&w.length<=7&&/^[a-zA-Z]+$/.test(w));
+  if(!eligible.length){c.innerHTML='<div style="padding:30px;text-align:center;color:var(--txt2)">Need words of 4–7 letters for Wordle.</div>';return;}
+  const secret=eligible[Math.floor(Math.random()*eligible.length)].toLowerCase();
+  const LEN=secret.length;const MAX=6;
+  let guesses=[],current='',gameOver=false;
+
+  function getTileState(guess,pos,secret){
+    const g=guess[pos],s=secret;
+    if(g===s[pos]) return 'correct';
+    if(s.includes(g)){
+      const secretCount=s.split('').filter(x=>x===g).length;
+      const correctCount=guess.split('').filter((x,i)=>x===g&&s[i]===g).length;
+      const guessCountBefore=guess.slice(0,pos).split('').filter(x=>x===g).length;
+      if(correctCount+guessCountBefore<secretCount) return 'present';
+    }
+    return 'absent';
+  }
+  function tileColor(state){return state==='correct'?'#22c55e':state==='present'?'#f5c842':'rgba(255,255,255,.15)';}
+  function tileBorder(state){return state==='correct'?'#22c55e':state==='present'?'#f5c842':state==='absent'?'rgba(255,255,255,.3)':'var(--bdr)';}
+
+  function renderBoard(){
+    let html='';
+    for(let row=0;row<MAX;row++){
+      const guess=guesses[row]||'';
+      const isActive=row===guesses.length&&!gameOver;
+      html+=`<div style="display:flex;gap:5px;margin-bottom:5px">`;
+      for(let col=0;col<LEN;col++){
+        const letter=guess[col]||(isActive?current[col]:'')||'';
+        const state=guess?getTileState(guess,col,secret):'';
+        const bg=guess?tileColor(state):(isActive&&letter?'rgba(255,255,255,.12)':'rgba(255,255,255,.05)');
+        const bdr=guess?tileBorder(state):(isActive&&letter?'rgba(255,255,255,.5)':'var(--bdr)');
+        html+=`<div style="width:48px;height:48px;border:2.5px solid ${bdr};background:${bg};border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:24px;color:var(--txt);transition:all .2s">${letter.toUpperCase()}</div>`;
+      }
+      html+=`</div>`;
+    }
+    return html;
+  }
+  function renderKeyboard(){
+    const rows=[['q','w','e','r','t','y','u','i','o','p'],['a','s','d','f','g','h','j','k','l'],['↵','z','x','c','v','b','n','m','⌫']];
+    const keyState={};
+    guesses.forEach(g=>{g.split('').forEach((l,i)=>{const s=getTileState(g,i,secret);if(!keyState[l]||s==='correct'||(s==='present'&&keyState[l]==='absent'))keyState[l]=s;});});
+    return rows.map(row=>`<div style="display:flex;gap:4px;justify-content:center;margin-bottom:4px">${row.map(k=>{
+      const s=keyState[k];const bg=s==='correct'?'#22c55e':s==='present'?'#f5c842':s==='absent'?'rgba(255,255,255,.1)':'rgba(255,255,255,.15)';
+      const w=k==='↵'||k==='⌫'?'50px':'36px';
+      return `<div onclick="wdKey('${k}')" style="width:${w};height:40px;border-radius:7px;background:${bg};display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:${k.length>1?'14':'18'}px;color:var(--txt);cursor:pointer;transition:background .2s;user-select:none;border:1.5px solid rgba(255,255,255,.1)">${k.toUpperCase()}</div>`;
+    }).join('')}</div>`).join('');
+  }
+  function build(){
+    c.innerHTML=`<div class="gtit">🟩 Wordle</div>
+    <div class="gsub">Guess the ${LEN}-letter spelling word in ${MAX} tries! 🟩 = right place &nbsp; 🟨 = wrong place &nbsp; ⬜ = not in word</div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
+      <div>
+        <div id="wd-board" style="margin-bottom:14px">${renderBoard()}</div>
+        <div id="wd-kb">${renderKeyboard()}</div>
+      </div>
+      <div style="min-width:140px">
+        <div style="font-size:11px;color:var(--txt2);font-weight:700;text-transform:uppercase;margin-bottom:8px">Legend</div>
+        <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--txt2)">
+          <div style="display:flex;align-items:center;gap:8px"><div style="width:22px;height:22px;border-radius:5px;background:#22c55e"></div>Correct letter &amp; place</div>
+          <div style="display:flex;align-items:center;gap:8px"><div style="width:22px;height:22px;border-radius:5px;background:#f5c842"></div>Right letter, wrong place</div>
+          <div style="display:flex;align-items:center;gap:8px"><div style="width:22px;height:22px;border-radius:5px;background:rgba(255,255,255,.15)"></div>Letter not in word</div>
+        </div>
+        <div style="margin-top:14px;font-size:11px;color:var(--txt2)">Attempts: ${guesses.length}/${MAX}</div>
+        <button class="gbtn s" style="margin-top:10px;font-size:12px;width:100%" onclick="gWordle(c,words)">New Word</button>
+      </div>
+    </div>
+    <div id="fb" style="min-height:36px;margin-top:10px"></div>`;
+  }
+  window.wdKey=function(k){
+    if(gameOver) return;
+    if(k==='⌫'||k==='Backspace'){current=current.slice(0,-1);}
+    else if(k==='↵'||k==='Enter'){
+      if(current.length<LEN){toast('Not enough letters!');return;}
+      guesses.push(current);current='';
+      const fb=document.getElementById('fb');
+      if(guesses[guesses.length-1]===secret){gameOver=true;fb.innerHTML=`<div class="gfb ok">🎉 You got it! "${secret.toUpperCase()}"!</div>`;awardStar('wordle');}
+      else if(guesses.length>=MAX){gameOver=true;fb.innerHTML=`<div class="gfb ng">The word was "${secret.toUpperCase()}" — better luck next time!</div>`;}
+    } else if(/^[a-z]$/i.test(k)&&current.length<LEN){current+=k.toLowerCase();}
+    document.getElementById('wd-board').innerHTML=renderBoard();
+    document.getElementById('wd-kb').innerHTML=renderKeyboard();
+  };
+  // Physical keyboard support
+  if(!window._wdKeyListener){
+    window._wdKeyListener=true;
+    document.addEventListener('keydown',function wdKL(e){
+      if(!document.getElementById('wd-board')){document.removeEventListener('keydown',wdKL);window._wdKeyListener=false;return;}
+      if(e.key==='Enter')window.wdKey('↵');
+      else if(e.key==='Backspace')window.wdKey('⌫');
+      else if(/^[a-zA-Z]$/.test(e.key))window.wdKey(e.key.toLowerCase());
+    });
+  }
+  build();
 }
 
 // ── TOAST ──
