@@ -1408,45 +1408,76 @@ function gFindSound(c) {
 
   let patterns = [];
   const focusLower = focus.toLowerCase();
-  // Extract quoted/slashed patterns directly from focus text
-  const quoted = [...focus.matchAll(/['"]([a-z-]+)['"]/gi), ...focus.matchAll(/\/([a-z-]+)\//gi)];
-  quoted.forEach(m => { const p=m[1].toLowerCase(); if(p.length>=2&&p.length<=6&&!patterns.includes(p)) patterns.push(p); });
-  // Safe keyword matching
-  const KNOWN_PAT=['oa','ow','ai','ay','ee','ea','ie','oo','ou','oi','oy','au','aw','ew','ue','ui','oe',
-    'igh','tion','sion','tch','dge','ph','gh','wh','ch','sh','th','kn','wr','gn','mb','ck','ng','nk',
-    'un','re','pre','mis','dis','anti','over','super','ing','ed','ly','er','est','ful','less','ness','ment',
-    'port','rupt','aud','graph','phon','scop','dict','scrib'];
-  KNOWN_PAT.forEach(function(pat){
-    if(patterns.includes(pat)) return;
-    var w=[' '+pat+' ',"'"+pat+"'",' /'+pat+'/ ','-'+pat,pat+'-',pat+')',':'+pat,','+pat+','];
-    var found=w.some(function(x){ return focusLower.indexOf(x)!==-1; });
-    if(!found&&(focusLower.indexOf('suffix')!==-1||focusLower.indexOf('prefix')!==-1||focusLower.indexOf('silent')!==-1||focusLower.indexOf('root')!==-1))
-      found=focusLower.indexOf(pat)!==-1;
-    if(found) patterns.push(pat);
+
+  // ── PATTERN EXTRACTION ──
+  // Step 1: Extract anything in quotes or slashes: 'oa', "igh", /tion/
+  const quotedMatches = [];
+  let qm;
+  const reQ = /['"]([\w-]{1,8})['"]/gi;
+  const reS = /\/([\w-]{1,8})\//gi;
+  while((qm=reQ.exec(focus))!==null) quotedMatches.push(qm[1].toLowerCase());
+  while((qm=reS.exec(focus))!==null) quotedMatches.push(qm[1].toLowerCase());
+  quotedMatches.forEach(function(p){ if(p.length>=2&&!patterns.includes(p)) patterns.push(p); });
+
+  // Step 2: Extract comma/space separated patterns from list-style focuses
+  // e.g. "Silent letters: kn, wr, gn" or "Greek roots: graph, phon, scope"
+  // Split the focus by colon to get the list part, then split by comma/space
+  const KNOWN_ALL = ['oa','ow','ai','ay','ee','ea','ie','ei','oo','ou','oi','oy','au','aw','ew','ue','ui','oe',
+    'igh','tion','sion','cian','tch','dge','ph','gh','wh','ch','sh','th','kn','wr','gn','mb','ck','ng','nk',
+    'un','re','pre','mis','dis','anti','over','super','in','out','sub','trans',
+    'ing','ed','ly','er','est','ful','less','ness','ment','ous','ive','tion','al','ic',
+    'port','rupt','aud','graph','phon','scop','dict','scrib','struct','ject','vis',
+    'auto','bio','geo','micro','tele','photo'];
+
+  // Parse comma-separated tokens from focus text
+  const focusTokens = focusLower.replace(/[/:;()\[\]]/g,' ').split(/[\s,]+/).map(function(t){return t.replace(/^[-]+|[-]+$/g,'');}).filter(function(t){return t.length>=2;});
+  focusTokens.forEach(function(tok){
+    if(KNOWN_ALL.indexOf(tok)!==-1 && patterns.indexOf(tok)===-1) patterns.push(tok);
   });
-  patterns=[...new Set(patterns)];
-  if(focusLower.indexOf('long')!==-1){
-    if(focusLower.indexOf(' a')!==-1&&!patterns.includes('ay'))  patterns.push('ay');
-    if(focusLower.indexOf(' e')!==-1&&!patterns.includes('ee'))  patterns.push('ee');
-    if(focusLower.indexOf(' i')!==-1&&!patterns.includes('igh')) patterns.push('igh');
-    if(focusLower.indexOf(' o')!==-1&&!patterns.includes('oa'))  patterns.push('oa');
-    if(focusLower.indexOf(' u')!==-1&&!patterns.includes('ue'))  patterns.push('ue');
-  }
-  if(focusLower.indexOf('schwa')!==-1&&!patterns.includes('er')) patterns.push('er');
-  // Fallback: ONLY use patterns with 3+ letters from word list (avoids 'er','ed' false matches)
-  // OR use 2-letter digraphs that appear in 3+ words (strong signal)
-  if (!patterns.length) {
-    const longPats = ['igh','tion','sion','tch','dge','ough','aigh','eigh','ight'];
-    const digraphs = ['oa','ow','ai','ay','ee','ea','ie','oo','ou','oi','oy','au','aw','ch','sh','th','wh','ph','kn','wr','gn','ng','ck'];
-    longPats.forEach(p => { if (words.some(w => w.toLowerCase().includes(p))) patterns.push(p); });
-    digraphs.forEach(p => {
-      const count = words.filter(w => w.toLowerCase().includes(p)).length;
-      if (count >= 3) patterns.push(p); // only if 3+ words have it
+
+  // Step 3: Named keyword matching for described sounds
+  const keywordMap = [
+    {keys:['long','vowel',' a'],pat:'ay'}, {keys:['long','vowel',' e'],pat:'ee'},
+    {keys:['long','vowel',' i'],pat:'igh'}, {keys:['long','vowel',' o'],pat:'oa'},
+    {keys:['long','vowel',' u'],pat:'ue'},
+    {keys:['schwa'],pat:'er'}, {keys:['silent','k'],pat:'kn'},
+    {keys:['silent','w'],pat:'wr'}, {keys:['silent','g'],pat:'gn'},
+    {keys:['silent','b'],pat:'mb'}, {keys:['silent','letter'],pat:'kn'},
+    {keys:['suffix','-ing'],pat:'ing'}, {keys:['suffix','-ed'],pat:'ed'},
+    {keys:['suffix','-ly'],pat:'ly'}, {keys:['suffix','-er'],pat:'er'},
+    {keys:['suffix','-tion'],pat:'tion'}, {keys:['suffix','-ness'],pat:'ness'},
+    {keys:['prefix','un'],pat:'un'}, {keys:['prefix','re'],pat:'re'},
+    {keys:['prefix','pre'],pat:'pre'}, {keys:['prefix','mis'],pat:'mis'},
+    {keys:['prefix','dis'],pat:'dis'},
+    {keys:['homophone'],pat:''}, {keys:['compound'],pat:''},
+  ];
+  keywordMap.forEach(function(rule){
+    if(!rule.pat) return;
+    // Use word-boundary style matching to avoid 'prefix' matching 're' 
+    var allMatch = rule.keys.every(function(k){
+      if(k.charAt(0)===' ') return focusLower.indexOf(k)!==-1; // space-prefixed = intentional substring
+      // Check as whole word or after space/punctuation
+      var re = new RegExp('(?:^|[\\s,;:/\\-])('+k.replace(/[-]/g,'\\-')+')(?:[\\s,;:/\\-]|$)');
+      return re.test(focusLower) || focusLower.indexOf(k+' ')!==-1 || focusLower.indexOf(' '+k)!==-1;
+    });
+    if(allMatch && patterns.indexOf(rule.pat)===-1) patterns.push(rule.pat);
+  });
+
+  // Deduplicate and remove empty
+  patterns = patterns.filter(function(p,i){ return p.length>=2 && patterns.indexOf(p)===i; });
+
+  // Step 4: Fallback — derive from word list (only strong signals: 3+ words, 3+ letter patterns)
+  if(!patterns.length){
+    const strongPats = ['igh','tion','sion','tch','dge','ough','ight','ough',
+                        'oa','ow','ai','ay','ee','ea','oo','ou','oi','au','aw',
+                        'ch','sh','th','wh','ph','kn','wr','gn','ng','ck','mb'];
+    strongPats.forEach(function(p){
+      var count = words.filter(function(w){ return w.toLowerCase().indexOf(p)!==-1; }).length;
+      if(count>=2 && patterns.indexOf(p)===-1) patterns.push(p);
     });
   }
-  if (!patterns.length) patterns = ['th'];
-  patterns = [...new Set(patterns)].filter(p => p.length >= 2);
-  if (!patterns.length) patterns = ['th'];
+
+  if(!patterns.length) patterns = ['th'];
   let passage = defaultPassage;
   let highlighted = new Set();
   let mode = 'click';
@@ -1470,7 +1501,7 @@ function gFindSound(c) {
     c.innerHTML = `<div class="gtit">🔎 Find the Sound</div>
     <div class="gsub">Tap every word in the passage that contains the focus sound!</div>
     <div class="fts-badge">${focus}</div>
-    <div style="font-size:11px;color:var(--txt2);margin-bottom:8px">Looking for: ${patterns.map(p=>'<span style="background:rgba(245,200,66,.2);border:1px solid var(--gold);border-radius:4px;padding:1px 6px;color:var(--gold);font-weight:800">'+p+'</span>').join(' ')}</div>
+    <div style="font-size:11px;color:var(--txt2);margin-bottom:8px">Looking for: ${patterns.length ? patterns.map(p=>'<span style="background:rgba(245,200,66,.2);border:1px solid var(--gold);border-radius:4px;padding:1px 6px;color:var(--gold);font-weight:800">'+p+'</span>').join(' ') : '<span style="color:var(--coral)">No patterns detected — check your focus text in Admin</span>'}</div>
     <div style="display:flex;gap:7px;margin-bottom:10px;flex-wrap:wrap">
       <button class="fts-mb${mode==='click'?' active':''}" onclick="ftsMode('click')">👆 Click Mode</button>
       <button class="fts-mb${mode==='auto'?' active':''}" onclick="ftsMode('auto')">✨ Auto Mode</button>
@@ -1511,15 +1542,44 @@ function gFindSound(c) {
       if(document.getElementById('fts-p')) document.getElementById('fts-p').innerHTML=renderPassage(passage,highlighted,mode,patterns);
     };
     window.ftsCheck = () => {
-      const tokens=tokenise(passage); let cor=0,miss=0,wrong=0;
-      tokens.forEach((tok,ti)=>{ if(!/[a-zA-Z]/.test(tok)) return; const hasP=patterns.some(p=>tok.toLowerCase().includes(p)); const isHl=highlighted.has(ti); if(hasP&&isHl)cor++; else if(hasP)miss++; else if(isHl)wrong++; });
-      const tot=cor+miss; const pct=tot>0?Math.round(cor/tot*100):0;
-      const fb=document.getElementById('fts-fb'); const sb=document.getElementById('fts-sc-badge'); const sc=document.getElementById('fts-sc');
-      if(sb){sb.style.display='block';sc.textContent=pct;}
-      if(pct===100){fb.innerHTML=`<div class="gfb ok">🎉 Perfect! All ${cor} words found!</div>`;if(!completed){completed=true;awardStar('findsound');}}
-      else if(pct>=70){fb.innerHTML=`<div class="gfb ok">⭐ Great! ${cor}/${tot} — missed ${miss}. Try again!</div>`;}
-      else{fb.innerHTML=`<div class="gfb ng">💪 ${cor}/${tot} — keep looking! ${miss} missed, ${wrong} wrong.</div>`;}
-    };
+      if(!passage.trim()){ const fb=document.getElementById('fts-fb'); if(fb) fb.innerHTML='<div class="gfb ng">No passage loaded — paste a text first!</div>'; return; }
+      const tokens=tokenise(passage);
+      let cor=0,miss=0,wrong=0,wrongWords=[],missWords=[];
+      tokens.forEach(function(tok,ti){
+        if(!/[a-zA-Z]/.test(tok)) return;
+        const hasP = patterns.some(function(p){ return tok.toLowerCase().indexOf(p)!==-1; });
+        const isHl = highlighted.has(ti);
+        if(hasP && isHl) cor++;
+        else if(hasP && !isHl){ miss++; missWords.push(tok); }
+        else if(!hasP && isHl){ wrong++; wrongWords.push(tok); }
+      });
+      const tot=cor+miss;
+      const pct=tot>0?Math.round(cor/tot*100):0;
+      const fb=document.getElementById('fts-fb');
+      const sb=document.getElementById('fts-sc-badge');
+      const sc=document.getElementById('fts-sc');
+      if(sb){ sb.style.display='block'; if(sc) sc.textContent=pct; }
+      if(tot===0){
+        if(fb) fb.innerHTML='<div class="gfb ng">No words in the passage match the focus pattern. Check the focus text in Admin.</div>';
+        return;
+      }
+      if(pct===100 && wrong===0){
+        if(fb) fb.innerHTML='<div class="gfb ok">🎉 Perfect! All '+cor+' word'+(cor!==1?'s':'')+' found correctly!</div>';
+        if(!completed){ completed=true; awardStar('findsound'); }
+      } else if(pct>=70){
+        var msg='<div class="gfb ok">⭐ Great! '+cor+'/'+tot+' correct';
+        if(miss>0) msg+=' — missed: <b>'+missWords.slice(0,5).join(', ')+'</b>';
+        if(wrong>0) msg+=' — extra: <b>'+wrongWords.slice(0,3).join(', ')+'</b>';
+        msg+='</div>';
+        if(fb) fb.innerHTML=msg;
+      } else {
+        var msg2='<div class="gfb ng">'+cor+'/'+tot+' found.';
+        if(miss>0) msg2+=' Missed: <b>'+missWords.slice(0,5).join(', ')+'</b>.';
+        if(wrong>0) msg2+=' Wrong: <b>'+wrongWords.slice(0,3).join(', ')+'</b>.';
+        msg2+='</div>';
+        if(fb) fb.innerHTML=msg2;
+      }
+    }
     window.ftsClear = () => { highlighted.clear(); if(document.getElementById('fts-p')) document.getElementById('fts-p').innerHTML=renderPassage(passage,highlighted,mode,patterns); const cnt=document.getElementById('fts-cnt');if(cnt)cnt.textContent=0; document.getElementById('fts-fb').innerHTML=''; };
     window.ftsPaste = () => { document.getElementById('fts-paste-area').style.display='block'; };
     window.ftsLoad = () => { const v=document.getElementById('fts-new').value.trim(); if(!v){toast('Paste some text first!');return;} passage=v; highlighted.clear(); document.getElementById('fts-paste-area').style.display='none'; build(); };
@@ -2765,44 +2825,4 @@ function gMapSpell(c, words) {
   window.msBlur=function(wi,ci,el){
     var wd=wordData[wi],val=(wd.userInput[ci]||'').trim(),seg=wd.segments[ci]||'';
     if(wd.checked){var ok=val.toLowerCase()===seg.toLowerCase();el.style.background=ok?'rgba(34,197,94,.25)':'rgba(255,107,107,.2)';el.style.borderColor=ok?'var(--green)':'var(--coral)';el.style.color=ok?'var(--green)':'var(--coral)';}
-    else{el.style.background=val?'rgba(78,205,196,.18)':'rgba(255,255,255,.06)';el.style.borderColor=val?'var(--teal)':'rgba(255,255,255,.22)';el.style.color='var(--txt)';}
-  };
-  window.msCheckRow=function(wi){
-    var wd=wordData[wi];wd.checked=true;
-    wd.correct=wd.segments.every(function(seg,ci){return(wd.userInput[ci]||'').trim().toLowerCase()===seg.toLowerCase();});
-    var g=document.getElementById('ms-grid');if(g)g.innerHTML=buildTable();
-  };
-  window.msCheckAll=function(){
-    var ok=0;
-    wordData.forEach(function(wd){wd.checked=true;wd.correct=wd.segments.every(function(seg,ci){return(wd.userInput[ci]||'').trim().toLowerCase()===seg.toLowerCase();});if(wd.correct)ok++;});
-    var g=document.getElementById('ms-grid');if(g)g.innerHTML=buildTable();
-    var fb=document.getElementById('ms-fb');
-    if(ok===wordData.length){if(fb)fb.innerHTML='<div class="gfb ok">Perfect! All words mapped correctly!</div>';awardStar('mapspell');}
-    else{if(fb)fb.innerHTML='<div class="gfb ng">'+ok+'/'+wordData.length+' correct — red boxes need fixing!</div>';}
-  };
-  window.msShow=function(){
-    wordData.forEach(function(wd,wi){wd.segments.forEach(function(seg,ci){wd.userInput[ci]=seg;var el=document.getElementById('ms-'+wi+'-'+ci);if(el){el.value=seg;el.style.background='rgba(168,85,247,.2)';el.style.borderColor='var(--purple)';el.style.color='var(--purple)';}});});
-    var fb=document.getElementById('ms-fb');if(fb)fb.innerHTML='<div style="font-size:13px;color:var(--txt2);padding:8px 0">Answers in purple — study, clear and try yourself!</div>';
-  };
-  window.msClear=function(){
-    wordData.forEach(function(wd){wd.userInput=[];wd.checked=false;wd.correct=null;});
-    var fb=document.getElementById('ms-fb');if(fb)fb.innerHTML='';
-    var g=document.getElementById('ms-grid');if(g)g.innerHTML=buildTable();
-    setTimeout(function(){var el=document.getElementById('ms-0-0');if(el)el.focus();},50);
-  };
-  build();
-}
-
-// ── TOAST ──
-function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
-
-// ── INIT ──
-initStars();
-sbBuildWeeks();
-mkWeekPills('week-pills',(w,b)=>{ S.week=w; attachWeekListener(); refreshAll(); },1);
-sbBuildWeeks();
-document.addEventListener('fbReady', () => { attachWeekListener(); renderLoginGrid(); updateSbWeekHighlights(); });
-document.getElementById('cust-in')?.addEventListener('keydown',e=>{if(e.key==='Enter')addCust();});
-</script>
-</body>
-</html>
+    else{el.style.background=val?'rgba(78,205,196,
