@@ -122,23 +122,91 @@ body{font-family:var(--fb);background:var(--navy);color:var(--txt);min-height:10
 .lock-err{color:var(--coral);font-size:13px;font-weight:700;min-height:18px;margin-bottom:10px}
 
 /* ── HEADER ── */
-.hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:rgba(13,27,62,.96);border-bottom:1px solid var(--bdr);position:sticky;top:0;z-index:100;flex-wrap:wrap;gap:8px}
-.logo{font-family:var(--fd);font-size:20px;color:var(--gold);display:flex;align-items:center;gap:8px}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:11px 18px;background:rgba(13,27,62,.97);border-bottom:1px solid var(--bdr);position:sticky;top:0;z-index:200;flex-wrap:wrap;gap:8px}
+.logo{font-family:var(--fd);font-size:19px;color:var(--gold);display:flex;align-items:center;gap:7px}
 .nav{display:flex;gap:5px;flex-wrap:wrap}
 .nb{font-family:var(--fb);font-weight:700;font-size:11px;padding:6px 12px;border-radius:18px;border:1.5px solid var(--bdr);background:transparent;color:var(--txt2);cursor:pointer;transition:all .2s}
 .nb:hover,.nb.active{background:var(--teal);border-color:var(--teal);color:var(--navy)}
 .nb.adm{border-color:var(--gold);color:var(--gold)}.nb.adm:hover,.nb.adm.active{background:var(--gold);color:var(--navy)}
 
 /* student chip in header */
-.student-chip{display:flex;align-items:center;gap:8px;background:rgba(78,205,196,.12);border:1.5px solid var(--teal);border-radius:20px;padding:5px 12px 5px 6px;cursor:pointer;transition:all .2s}
+.student-chip{display:flex;align-items:center;gap:7px;background:rgba(78,205,196,.12);border:1.5px solid var(--teal);border-radius:20px;padding:5px 12px 5px 6px;cursor:pointer;transition:all .2s}
 .student-chip:hover{background:rgba(78,205,196,.22)}
-.student-chip .ava{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;background:rgba(255,255,255,.1);flex-shrink:0}
-.student-chip .sname{font-size:12px;font-weight:800;color:var(--teal)}
-.student-chip .grp-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.student-chip .ava{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;background:rgba(255,255,255,.1);flex-shrink:0}
+.student-chip .sname{font-size:11px;font-weight:800;color:var(--teal)}
+.student-chip .grp-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 
-/* ── VIEWS ── */
-.view{display:none;padding:20px;max-width:1100px;margin:0 auto;width:100%}
+/* ── APP SHELL: sidebar + main ── */
+#app-shell{display:flex;min-height:calc(100vh - 54px)}
+
+/* LEFT SIDEBAR */
+#sidebar{width:210px;flex-shrink:0;background:rgba(13,27,62,.92);border-right:1px solid var(--bdr);padding:16px 12px;position:sticky;top:54px;height:calc(100vh - 54px);overflow-y:auto;display:block}
+.sb-section{margin-bottom:18px}
+.sb-title{font-size:10px;font-weight:800;color:var(--txt2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;padding:0 4px}
+.sb-group-btn{display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border-radius:10px;border:1.5px solid transparent;background:transparent;color:var(--txt2);font-family:var(--fb);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;margin-bottom:3px;text-align:left}
+.sb-group-btn:hover{background:rgba(255,255,255,.05);border-color:var(--bdr)}
+.sb-group-btn.active{background:rgba(255,255,255,.08);border-color:var(--bdr)}
+.sb-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.sb-term-row{display:flex;gap:4px;margin-bottom:8px}
+.sb-term-btn{flex:1;padding:5px 4px;border-radius:8px;border:1.5px solid var(--bdr);background:transparent;color:var(--txt2);font-family:var(--fb);font-size:11px;font-weight:800;cursor:pointer;transition:all .15s;text-align:center}
+.sb-term-btn:hover{border-color:var(--teal);color:var(--teal)}
+.sb-term-btn.active{background:var(--teal);border-color:var(--teal);color:var(--navy)}
+.sb-week-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px}
+.sb-week-btn{padding:5px 2px;border-radius:7px;border:1.5px solid var(--bdr);background:transparent;color:var(--txt2);font-family:var(--fb);font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;text-align:center}
+.sb-week-btn:hover{border-color:var(--teal);color:var(--teal)}
+.sb-week-btn.active{background:var(--teal);border-color:var(--teal);color:var(--navy)}
+.sb-week-btn.has-data{border-color:rgba(78,205,196,.4);color:var(--teal)}
+.sb-week-btn.active.has-data{background:var(--teal);color:var(--navy)}
+.sb-nav-btn{display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border-radius:10px;border:none;background:transparent;color:var(--txt2);font-family:var(--fb);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;margin-bottom:2px;text-align:left}
+.sb-nav-btn:hover{background:rgba(255,255,255,.06);color:var(--txt)}
+.sb-nav-btn.active{background:rgba(78,205,196,.12);color:var(--teal)}
+
+/* MAIN CONTENT */
+#main-content{flex:1;min-width:0}
+.view{display:none;padding:18px 20px;max-width:960px;width:100%}
 .view.active{display:block}
+
+/* ── PIN MODAL ── */
+#pin-modal{display:none;position:fixed;inset:0;z-index:450;background:rgba(13,27,62,.97);align-items:center;justify-content:center}
+#pin-modal.show{display:flex}
+.pin-dots{display:flex;gap:10px;justify-content:center;margin:16px 0}
+.pin-dot{width:16px;height:16px;border-radius:50%;border:2px solid var(--bdr);background:transparent;transition:all .2s}
+.pin-dot.filled{background:var(--gold);border-color:var(--gold)}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:220px;margin:0 auto}
+.pin-key{padding:14px;border-radius:12px;border:1.5px solid var(--bdr);background:rgba(255,255,255,.06);color:var(--txt);font-family:var(--fd);font-size:22px;cursor:pointer;transition:all .15s;text-align:center;user-select:none}
+.pin-key:hover{background:rgba(255,255,255,.12);border-color:var(--teal)}
+.pin-key:active{transform:scale(.93)}
+.pin-err{color:var(--coral);font-size:13px;font-weight:700;text-align:center;min-height:18px;margin-top:8px}
+
+/* ── PRINT LABELS ── */
+@media print{
+  body{background:#fff!important;color:#000!important}
+  .hdr,.stars-bg,#sidebar,.overlay,#pin-modal,.toast,#app-shell{display:none!important}
+  #print-labels{display:block!important}
+}
+#print-labels{display:none}
+.label-sheet{max-width:800px;margin:0 auto;padding:10mm}
+.label-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6mm}
+.label-item{border:1.5px solid #333;border-radius:6px;padding:6px 8px;display:flex;align-items:center;gap:8px;height:28mm;box-sizing:border-box;background:#fff;page-break-inside:avoid}
+.label-avatar{font-size:24px;flex-shrink:0;width:28px;text-align:center}
+.label-info{flex:1;min-width:0}
+.label-name{font-size:13px;font-weight:900;color:#000;font-family:sans-serif;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.label-group{font-size:10px;font-weight:700;text-transform:uppercase;margin-bottom:3px}
+.label-pin-row{display:flex;align-items:center;gap:4px;font-size:10px;color:#444;font-family:sans-serif}
+.label-pin-box{border:1px solid #999;border-radius:3px;padding:1px 6px;font-size:11px;font-weight:900;letter-spacing:2px;font-family:monospace;background:#f5f5f5}
+.label-stars{display:flex;gap:1px;margin-top:2px}
+.label-star{font-size:9px}
+.label-url{font-size:8px;color:#666;margin-top:2px;font-family:monospace}
+.label-logo{font-size:9px;font-weight:900;color:#888;font-family:sans-serif}
+
+@media(max-width:700px){
+  #sidebar{display:none!important}
+  .view{padding:12px}
+  #app-shell{flex-direction:column}
+}
+@media(min-width:701px){
+  #sidebar{display:block!important}
+}
 h2.vt{font-family:var(--fd);font-size:24px;color:var(--txt);margin-bottom:5px}
 .vm{font-size:13px;color:var(--txt2);margin-bottom:18px}
 
@@ -362,10 +430,20 @@ h2.vt{font-family:var(--fd);font-size:24px;color:var(--txt);margin-bottom:5px}
   </div>
 </div>
 
+<!-- PRINT LABELS (hidden until print) -->
+<div id="print-labels">
+  <div class="label-sheet">
+    <div style="font-family:sans-serif;font-size:14px;font-weight:900;margin-bottom:8mm;color:#000">🚀 Stellar Spelling — Student Login Cards</div>
+    <div class="label-grid" id="label-grid-content"></div>
+  </div>
+</div>
+
 <div id="app">
   <!-- HEADER -->
   <header class="hdr">
-    <div class="logo">🚀 Stellar Spelling <span class="sync-dot" id="sync-dot" style="display:none" title="Live sync active"></span></div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="logo">🚀 Stellar Spelling <span class="sync-dot" id="sync-dot" style="display:none" title="Live sync active"></span></div>
+    </div>
     <nav class="nav">
       <button class="nb" id="nb-home" onclick="showView('home')">🏠 Home</button>
       <button class="nb" id="nb-words" onclick="showView('words')">📚 Words</button>
@@ -375,9 +453,45 @@ h2.vt{font-family:var(--fd);font-size:24px;color:var(--txt);margin-bottom:5px}
     </nav>
     <div id="student-hdr"></div>
   </header>
+  <div id="app-shell">
+    <!-- LEFT SIDEBAR -->
+    <aside id="sidebar">
+      <div class="sb-section">
+        <div class="sb-title">Navigation</div>
+        <button class="sb-nav-btn active" id="sbnb-home" onclick="showView('home')">🏠 Home</button>
+        <button class="sb-nav-btn" id="sbnb-words" onclick="showView('words')">📚 Word List</button>
+        <button class="sb-nav-btn" id="sbnb-activities" onclick="showView('activities')">🎮 Activities</button>
+        <button class="sb-nav-btn" id="sbnb-games" onclick="showView('games')">⭐ Games</button>
+      </div>
+      <div class="sb-section" id="sb-group-section" style="display:none">
+        <div class="sb-title">Group</div>
+        <button class="sb-group-btn comets active" id="sbg-comets" onclick="sbSelGroup('comets',this)"><div class="sb-dot" style="background:var(--comets)"></div>☄️ Comets</button>
+        <button class="sb-group-btn meteors" id="sbg-meteors" onclick="sbSelGroup('meteors',this)"><div class="sb-dot" style="background:var(--meteors)"></div>🌠 Meteors</button>
+        <button class="sb-group-btn nebulas" id="sbg-nebulas" onclick="sbSelGroup('nebulas',this)"><div class="sb-dot" style="background:var(--nebulas)"></div>🌌 Nebulas</button>
+        <button class="sb-group-btn rockets" id="sbg-rockets" onclick="sbSelGroup('rockets',this)"><div class="sb-dot" style="background:var(--rockets)"></div>🚀 Rockets</button>
+      </div>
+      <div class="sb-section">
+        <div class="sb-title">Term</div>
+        <div class="sb-term-row" id="sb-term-row">
+          <button class="sb-term-btn active" onclick="sbSelTerm(1,this)">T1</button>
+          <button class="sb-term-btn" onclick="sbSelTerm(2,this)">T2</button>
+          <button class="sb-term-btn" onclick="sbSelTerm(3,this)">T3</button>
+          <button class="sb-term-btn" onclick="sbSelTerm(4,this)">T4</button>
+        </div>
+        <div class="sb-title" style="margin-top:10px">Week</div>
+        <div class="sb-week-grid" id="sb-week-grid"></div>
+      </div>
+      <div class="sb-section" id="sb-progress-mini" style="display:none">
+        <div class="sb-title">This Week</div>
+        <div id="sb-stars-mini" style="font-size:18px;padding:4px 0">☆☆☆☆☆☆☆☆☆☆</div>
+        <div id="sb-score-mini" style="font-size:11px;color:var(--txt2);margin-top:2px">0 / 10 stars</div>
+      </div>
+    </aside>
+    <!-- MAIN CONTENT -->
+    <div id="main-content">
 
   <!-- LOGIN / STUDENT PICKER -->
-  <div class="view active" id="view-login" style="padding-top:40px">
+  <div class="view active" id="view-login" style="padding-top:30px">
     <div class="login-title">🚀 Stellar Spelling</div>
     <p class="login-sub">Choose your group, then tap your name to begin!</p>
     <div class="group-tabs" id="login-tabs">
@@ -563,25 +677,48 @@ h2.vt{font-family:var(--fd);font-size:24px;color:var(--txt);margin-bottom:5px}
 
     <!-- ROSTER TAB -->
     <div id="adm-roster-panel" style="display:none">
+      <div class="sc" style="margin-bottom:14px">
+        <div class="fr">
+          <div><div class="st" style="margin-bottom:2px">Student Login Cards</div><div style="font-size:12px;color:var(--txt2)">Print label-sized cards with each student's name, avatar, group and PIN</div></div>
+          <div class="sp"></div>
+          <button class="gbtn p" onclick="printLabels()" style="font-size:12px;padding:8px 16px">🖨️ Print All Labels</button>
+        </div>
+      </div>
       <div class="two">
         <div class="admp">
           <div class="admt">☄️ Comets</div>
-          <div class="roster-in-row"><input class="roster-in" id="ri-comets" placeholder="Student name..."><button class="roster-btn" onclick="addStudent('comets')">+ Add</button></div>
+          <div class="roster-in-row">
+            <input class="roster-in" id="ri-comets" placeholder="Student name...">
+            <input class="roster-in" id="rp-comets" placeholder="PIN (4 digits)" maxlength="4" style="width:110px" type="number">
+            <button class="roster-btn" onclick="addStudent('comets')">+ Add</button>
+          </div>
           <div class="roster-list" id="rl-comets"></div>
         </div>
         <div class="admp">
           <div class="admt">🌠 Meteors</div>
-          <div class="roster-in-row"><input class="roster-in" id="ri-meteors" placeholder="Student name..."><button class="roster-btn" onclick="addStudent('meteors')">+ Add</button></div>
+          <div class="roster-in-row">
+            <input class="roster-in" id="ri-meteors" placeholder="Student name...">
+            <input class="roster-in" id="rp-meteors" placeholder="PIN (4 digits)" maxlength="4" style="width:110px" type="number">
+            <button class="roster-btn" onclick="addStudent('meteors')">+ Add</button>
+          </div>
           <div class="roster-list" id="rl-meteors"></div>
         </div>
         <div class="admp">
           <div class="admt">🌌 Nebulas</div>
-          <div class="roster-in-row"><input class="roster-in" id="ri-nebulas" placeholder="Student name..."><button class="roster-btn" onclick="addStudent('nebulas')">+ Add</button></div>
+          <div class="roster-in-row">
+            <input class="roster-in" id="ri-nebulas" placeholder="Student name...">
+            <input class="roster-in" id="rp-nebulas" placeholder="PIN (4 digits)" maxlength="4" style="width:110px" type="number">
+            <button class="roster-btn" onclick="addStudent('nebulas')">+ Add</button>
+          </div>
           <div class="roster-list" id="rl-nebulas"></div>
         </div>
         <div class="admp">
           <div class="admt">🚀 Rockets</div>
-          <div class="roster-in-row"><input class="roster-in" id="ri-rockets" placeholder="Student name..."><button class="roster-btn" onclick="addStudent('rockets')">+ Add</button></div>
+          <div class="roster-in-row">
+            <input class="roster-in" id="ri-rockets" placeholder="Student name...">
+            <input class="roster-in" id="rp-rockets" placeholder="PIN (4 digits)" maxlength="4" style="width:110px" type="number">
+            <button class="roster-btn" onclick="addStudent('rockets')">+ Add</button>
+          </div>
           <div class="roster-list" id="rl-rockets"></div>
         </div>
       </div>
@@ -606,7 +743,33 @@ h2.vt{font-family:var(--fd);font-size:24px;color:var(--txt);margin-bottom:5px}
     </div>
   </div>
 
+    </div><!-- end main-content -->
+  </div><!-- end app-shell -->
+</div><!-- end app -->
+
+<!-- PIN ENTRY MODAL -->
+<div id="pin-modal">
+  <div class="modal" style="max-width:300px">
+    <div class="modal-icon" id="pin-student-ava">🐶</div>
+    <h2 id="pin-student-name">Enter PIN</h2>
+    <p id="pin-modal-sub">Enter your 4-digit PIN to change your avatar</p>
+    <div class="pin-dots" id="pin-dots">
+      <div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div>
+    </div>
+    <div class="pin-err" id="pin-err"></div>
+    <div class="pin-pad">
+      <div class="pin-key" onclick="pinKey('1')">1</div><div class="pin-key" onclick="pinKey('2')">2</div><div class="pin-key" onclick="pinKey('3')">3</div>
+      <div class="pin-key" onclick="pinKey('4')">4</div><div class="pin-key" onclick="pinKey('5')">5</div><div class="pin-key" onclick="pinKey('6')">6</div>
+      <div class="pin-key" onclick="pinKey('7')">7</div><div class="pin-key" onclick="pinKey('8')">8</div><div class="pin-key" onclick="pinKey('9')">9</div>
+      <div class="pin-key" onclick="pinClear()" style="font-size:14px;color:var(--txt2)">CLR</div>
+      <div class="pin-key" onclick="pinKey('0')">0</div>
+      <div class="pin-key" onclick="pinBack()" style="font-size:18px">⌫</div>
+    </div>
+    <button class="gbtn s" style="width:100%;margin-top:14px;font-size:12px" onclick="document.getElementById('pin-modal').classList.remove('show')">Cancel</button>
+  </div>
 </div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -641,6 +804,237 @@ function initStars(){
   for(let i=0;i<55;i++){const s=document.createElement('div');s.className='star';const sz=Math.random()*2.5+.5;s.style.cssText=`width:${sz}px;height:${sz}px;top:${Math.random()*100}%;left:${Math.random()*100}%;animation-delay:${Math.random()*3}s;animation-duration:${2+Math.random()*3}s`;bg.appendChild(s);}
 }
 
+
+// ── SIDEBAR ──
+let sidebarOpen = true;
+function toggleSidebar() {} // sidebar is always visible
+function showSidebar() {} // no-op — sidebar always shown
+
+function sbBuildWeeks() {
+  const grid = document.getElementById('sb-week-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  for (let w=1; w<=11; w++) {
+    const b = document.createElement('button');
+    b.className = 'sb-week-btn' + (w===S.week?' active':'');
+    b.textContent = 'W'+w;
+    b.id = 'sbw-'+w;
+    b.onclick = () => { S.week=w; sbSelectWeek(w); };
+    grid.appendChild(b);
+  }
+  updateSbWeekHighlights();
+}
+
+async function updateSbWeekHighlights() {
+  if (!window._loadArchive) return;
+  try {
+    const arc = await window._loadArchive(S.group);
+    const grid = document.getElementById('sb-week-grid');
+    if (!grid) return;
+    for (let w=1; w<=11; w++) {
+      const btn = document.getElementById('sbw-'+w);
+      if (!btn) continue;
+      const key = `${S.group}_T${S.term}_W${w}`;
+      if (arc[key]) btn.classList.add('has-data'); else btn.classList.remove('has-data');
+      btn.classList.toggle('active', w===S.week);
+    }
+  } catch(e) {}
+}
+
+function sbSelectWeek(w) {
+  S.week = w;
+  document.querySelectorAll('.sb-week-btn').forEach(b => b.classList.toggle('active', b.textContent==='W'+w));
+  attachWeekListener();
+  refreshAll();
+  updateSbMiniProgress();
+}
+
+function sbSelTerm(t, el) {
+  S.term = t; S.week = 1;
+  document.querySelectorAll('.sb-term-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  // Also update main term pills
+  document.querySelectorAll('#term-pills .twp').forEach((b,i) => b.classList.toggle('active', i+1===t));
+  sbBuildWeeks();
+  attachWeekListener();
+  refreshAll();
+}
+
+function sbSelGroup(g, el) {
+  S.group = g;
+  document.querySelectorAll('.sb-group-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  // Also update home group pills if visible
+  document.querySelectorAll('.gp').forEach(p => { p.classList.toggle('active', p.classList.contains(g)); });
+  attachWeekListener();
+  refreshAll();
+  updateSbWeekHighlights();
+  updateSbMiniProgress();
+}
+
+function updateSbMiniProgress() {
+  const mini = document.getElementById('sb-progress-mini');
+  const starsEl = document.getElementById('sb-stars-mini');
+  const scoreEl = document.getElementById('sb-score-mini');
+  if (!mini) return;
+  if (!currentStudent) { mini.style.display='none'; return; }
+  mini.style.display = 'block';
+  const stars = currentProgress.stars || 0;
+  if (starsEl) starsEl.textContent = '⭐'.repeat(stars) + '☆'.repeat(10-stars);
+  if (scoreEl) scoreEl.textContent = stars + ' / 10 stars';
+}
+
+function syncSidebarToState() {
+  // Sync term buttons
+  document.querySelectorAll('.sb-term-btn').forEach((b,i) => b.classList.toggle('active', i+1===S.term));
+  // Sync group buttons
+  document.querySelectorAll('.sb-group-btn').forEach(b => {
+    const g = ['comets','meteors','nebulas','rockets'].find(g => b.id==='sbg-'+g);
+    if (g) b.classList.toggle('active', g===S.group);
+  });
+  sbBuildWeeks();
+  updateSbMiniProgress();
+}
+
+// Show group section only when student is logged in
+function showSbGroupSection(show) {
+  const el = document.getElementById('sb-group-section');
+  if (el) el.style.display = show ? 'block' : 'none';
+}
+
+// sidebar nav sync handled inside main showView below
+
+// ── PIN SYSTEM ──
+let pinBuffer = '';
+let pinTarget = null; // { studentId, group, purpose } — purpose: 'avatar'
+let pinCallback = null;
+
+function openPinForAvatar(studentId, group) {
+  const students = rosterData[group] || [];
+  const st = students.find(s => s.id === studentId);
+  if (!st) return;
+  // If student has no PIN set, open avatar directly
+  if (!st.pin) { openAvatarPicker(studentId, group); return; }
+  pinBuffer = '';
+  pinTarget = { studentId, group };
+  pinCallback = () => _realOpenAvatar(studentId, group);
+  document.getElementById('pin-student-ava').textContent = st.avatar || '🐶';
+  document.getElementById('pin-student-name').textContent = st.name;
+  document.getElementById('pin-modal-sub').textContent = 'Enter your 4-digit PIN to change your avatar';
+  document.getElementById('pin-err').textContent = '';
+  updatePinDots();
+  document.getElementById('pin-modal').classList.add('show');
+}
+
+function pinKey(k) {
+  if (pinBuffer.length >= 4) return;
+  pinBuffer += k;
+  updatePinDots();
+  if (pinBuffer.length === 4) setTimeout(checkPin, 150);
+}
+function pinBack() { pinBuffer = pinBuffer.slice(0,-1); updatePinDots(); document.getElementById('pin-err').textContent=''; }
+function pinClear() { pinBuffer = ''; updatePinDots(); document.getElementById('pin-err').textContent=''; }
+function updatePinDots() {
+  for (let i=0;i<4;i++) {
+    const d = document.getElementById('pd'+i);
+    if (d) d.classList.toggle('filled', i < pinBuffer.length);
+  }
+}
+function checkPin() {
+  if (!pinTarget) return;
+  const students = rosterData[pinTarget.group] || [];
+  const st = students.find(s => s.id === pinTarget.studentId);
+  if (st && st.pin && String(st.pin) === String(pinBuffer)) {
+    document.getElementById('pin-modal').classList.remove('show');
+    if (pinCallback) pinCallback();
+  } else {
+    document.getElementById('pin-err').textContent = 'Wrong PIN — try again!';
+    pinBuffer = '';
+    updatePinDots();
+    // Shake animation
+    const modal = document.querySelector('#pin-modal .modal');
+    if (modal) { modal.style.transform='translateX(-8px)'; setTimeout(()=>modal.style.transform='',300); }
+  }
+}
+
+// ── UPDATED addStudent — with PIN ──
+async function addStudent(group) {
+  const inp = document.getElementById('ri-'+group);
+  const pinInp = document.getElementById('rp-'+group);
+  const name = inp?.value.trim();
+  if (!name) return;
+  const pin = pinInp?.value.trim() || '';
+  if (pin && (pin.length !== 4 || !/^\d{4}$/.test(pin))) { toast('PIN must be exactly 4 digits'); return; }
+  const id = 's_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+  const avatar = ANIMALS[Math.floor(Math.random()*ANIMALS.length)];
+  if (!rosterData[group]) rosterData[group] = [];
+  rosterData[group].push({id, name, avatar, pin: pin || null});
+  if (inp) inp.value = '';
+  if (pinInp) pinInp.value = '';
+  if (window._saveRoster) await window._saveRoster(rosterData);
+  toast(`${name} added to ${group}!`);
+}
+
+// ── UPDATED renderRosterAdmin — show PIN, allow edit PIN ──
+function renderRosterAdmin() {
+  ['comets','meteors','nebulas','rockets'].forEach(g => {
+    const list = document.getElementById('rl-'+g); if(!list) return;
+    const students = rosterData[g]||[];
+    list.innerHTML = students.map(st => `<div class="roster-row">
+      <div class="roster-ava" style="cursor:pointer" onclick="openAvatarPicker('${st.id}','${g}')" title="Change avatar">${st.avatar||st.name.charAt(0)}</div>
+      <div class="roster-name">${st.name}</div>
+      <div style="display:flex;align-items:center;gap:5px">
+        <div style="font-size:10px;color:var(--txt2);font-weight:700">PIN:</div>
+        <input type="number" maxlength="4" value="${st.pin||''}" placeholder="none"
+          style="width:64px;background:var(--inp);border:1.5px solid var(--bdr);border-radius:7px;padding:3px 6px;font-family:var(--fb);font-size:12px;font-weight:700;color:var(--txt);outline:none;text-align:center"
+          onchange="updateStudentPin('${st.id}','${g}',this.value)"
+          onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--bdr)'">
+      </div>
+      <button class="roster-del" onclick="removeStudent('${st.id}','${g}')">Remove</button>
+    </div>`).join('') || '<div style="font-size:12px;color:var(--txt2);padding:6px 0">No students yet</div>';
+  });
+}
+
+async function updateStudentPin(id, group, newPin) {
+  const pin = String(newPin).trim();
+  if (pin && (pin.length !== 4 || !/^\d{4}$/.test(pin))) { toast('PIN must be 4 digits'); return; }
+  rosterData[group] = (rosterData[group]||[]).map(s => s.id===id ? {...s, pin: pin||null} : s);
+  if (window._saveRoster) await window._saveRoster(rosterData);
+  toast('PIN updated ✓');
+}
+
+// ── PRINT LABELS ──
+function printLabels() {
+  const grid = document.getElementById('label-grid-content');
+  if (!grid) return;
+  const groupEmoji = {comets:'☄️',meteors:'🌠',nebulas:'🌌',rockets:'🚀'};
+  const groupColor = {comets:'#b45309',meteors:'#dc2626',nebulas:'#7c3aed',rockets:'#0891b2'};
+  let html = '';
+  ['comets','meteors','nebulas','rockets'].forEach(g => {
+    (rosterData[g]||[]).forEach(st => {
+      const stars = '★'.repeat(0) + '☆'.repeat(10);
+      const pinDisplay = st.pin ? st.pin : '—';
+      html += `<div class="label-item">
+        <div class="label-avatar">${st.avatar||'🐶'}</div>
+        <div class="label-info">
+          <div class="label-name">${st.name}</div>
+          <div class="label-group" style="color:${groupColor[g]}">${groupEmoji[g]} ${g.charAt(0).toUpperCase()+g.slice(1)}</div>
+          <div class="label-pin-row">PIN: <span class="label-pin-box">${pinDisplay}</span></div>
+          <div class="label-url">34z2026flps.github.io/stellar-spelling</div>
+        </div>
+        <div style="writing-mode:vertical-rl;font-size:16px;opacity:.3;flex-shrink:0">🚀</div>
+      </div>`;
+    });
+  });
+  if (!html) { toast('No students to print — add students first!'); return; }
+  grid.innerHTML = html;
+  setTimeout(() => window.print(), 100);
+}
+
+// ── OVERRIDE openAvatarPicker to use PIN when student is not admin ──
+// (uses openPinForAvatar which calls _realOpenAvatar internally)
+
+
 // ── FIREBASE READY ──
 document.addEventListener('fbReady', () => {
   document.getElementById('sync-dot').style.display = 'inline-block';
@@ -651,7 +1045,7 @@ setTimeout(() => {
   if (!window._fbReady) {
     showFirebaseSetup();
   }
-}, 3000);
+}, 6000);
 
 function showFirebaseSetup() {
   const grid = document.getElementById('student-grid');
@@ -741,8 +1135,14 @@ async function selectStudent(id, group) {
     });
   }
 
+  // Re-attach week listener for this student's group
+  attachWeekListener();
   // Update header
   renderStudentHeader();
+  // Show sidebar with correct group
+  showSbGroupSection(true);
+  syncSidebarToState();
+  updateSbWeekHighlights();
   showView('home');
 }
 
@@ -760,7 +1160,7 @@ function renderStudentHeader() {
 }
 
 // ── AVATAR PICKER ──
-function openAvatarPicker(studentId, group) {
+function _realOpenAvatar(studentId, group) {
   avPickerStudent = { id: studentId, group };
   const st = (rosterData[group]||[]).find(s=>s.id===studentId);
   avSelected = st ? st.avatar : '🐶';
@@ -790,6 +1190,12 @@ async function saveAvatar() {
   }
 }
 
+// Public wrapper — checks PIN if student has one (unless admin is unlocked)
+function openAvatarPicker(studentId, group) {
+  if (adminUnlocked) { _realOpenAvatar(studentId, group); return; }
+  openPinForAvatar(studentId, group);
+}
+
 // ── NAVIGATION ──
 function showView(v) {
   document.querySelectorAll('.view').forEach(e => e.classList.remove('active'));
@@ -798,7 +1204,11 @@ function showView(v) {
   if (el) el.classList.add('active');
   const nb = document.getElementById('nb-' + v);
   if (nb) nb.classList.add('active');
-  if (v === 'home') { renderHome(); renderProgressBlock(); }
+  // Sync sidebar nav buttons
+  document.querySelectorAll('.sb-nav-btn').forEach(b => {
+    b.classList.toggle('active', b.id === 'sbnb-'+v);
+  });
+  if (v === 'home') { renderHome(); renderProgressBlock(); renderWords(); updateSbMiniProgress(); }
   if (v === 'words') renderWords();
   if (v === 'admin') renderAdmin();
   if (v === 'login') { renderLoginGrid(); renderStudentHeader(); }
@@ -895,14 +1305,15 @@ function updateActivityGrid() {
 }
 
 async function awardStar(activityId) {
-  if (!currentStudent) return;
+  if (!currentStudent) { console.log('No student selected — star not saved'); return; }
   const done = currentProgress.completedActivities || [];
-  if (done.includes(activityId)) return; // already earned
+  if (done.includes(activityId)) { console.log('Already earned star for', activityId); return; } // already earned
   const newDone = [...done, activityId];
   const newStars = Math.min(newDone.length, 10);
   currentProgress = { ...currentProgress, stars: newStars, completedActivities: newDone };
   renderProgressBlock();
   updateActivityGrid();
+  updateSbMiniProgress();
   if (window._saveProgress) {
     await window._saveProgress(currentStudent.id, S.group, S.term, S.week, newStars, newDone);
   }
@@ -1035,30 +1446,6 @@ async function admSave() {
 }
 function renderAdmin() { renderAdmArc(); renderAdmTasks(); loadAdmForm(); }
 
-// ── ROSTER ADMIN ──
-function renderRosterAdmin() {
-  ['comets','meteors','nebulas','rockets'].forEach(g => {
-    const list = document.getElementById('rl-'+g); if(!list) return;
-    const students = rosterData[g]||[];
-    list.innerHTML = students.map(st => `<div class="roster-row">
-      <div class="roster-ava" style="cursor:pointer" onclick="openAvatarPicker('${st.id}','${g}')" title="Change avatar">${st.avatar||st.name.charAt(0)}</div>
-      <div class="roster-name">${st.name}</div>
-      <button class="roster-del" onclick="removeStudent('${st.id}','${g}')">Remove</button>
-    </div>`).join('') || '<div style="font-size:12px;color:var(--txt2);padding:6px 0">No students yet</div>';
-  });
-}
-async function addStudent(group) {
-  const inp = document.getElementById('ri-'+group);
-  const name = inp.value.trim();
-  if (!name) return;
-  const id = 's_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
-  const avatar = ANIMALS[Math.floor(Math.random()*ANIMALS.length)];
-  if (!rosterData[group]) rosterData[group] = [];
-  rosterData[group].push({id, name, avatar});
-  inp.value = '';
-  if (window._saveRoster) await window._saveRoster(rosterData);
-  toast(`${name} added to ${group}!`);
-}
 async function removeStudent(id, group) {
   rosterData[group] = (rosterData[group]||[]).filter(s => s.id !== id);
   if (window._saveRoster) await window._saveRoster(rosterData);
@@ -1095,26 +1482,30 @@ async function loadProgView() {
 // ── ACTIVITIES ──
 function launch(id) {
   S.activeGame = id; showView('activities');
-  const c = document.getElementById('game-container'); const words = getSW();
-  if (!words.length) { c.innerHTML='<div style="text-align:center;padding:36px;color:var(--txt2)">No words yet! Ask your teacher to assign a word list.</div>'; return; }
-  if (id==='findsound') gFindSound(c);
-  else if (id==='scramble') gScramble(c,words);
-  else if (id==='builder') gBuilder(c,words);
-  else if (id==='syllables') gSyllables(c,words);
-  else if (id==='memory') gMemory(c,words);
-  else if (id==='missing') gMissing(c,words);
-  else if (id==='categorise') gCategorise(c,words);
-  else if (id==='breaker') gBreaker(c,words);
-  else if (id==='joiner') gJoiner(c,words);
-  else if (id==='sentences') gSentences(c,words);
-  else if (id==='alpha') gAlpha(c,words);
-  else if (id==='pyramid') gPyramid(c,words);
-  else if (id==='vowcons') gVowCons(c,words);
-  else if (id==='wordsearch') gWordSearch(c,words);
-  else if (id==='crossword') gCrossword(c,words);
-  else if (id==='wordle') gWordle(c,words);
-  else if (id==='galaxyquest') gGalaxyQuest(c);
-  else if (id==='spellbee') gSpellBee(c);
+  const c = document.getElementById('game-container');
+  // Galaxy Quest and Spelling Bee load their own words from Firebase history
+  if (id==='galaxyquest') { gGalaxyQuest(c); return; }
+  if (id==='spellbee')    { gSpellBee(c);    return; }
+  // All other games need current week words
+  const words = getSW();
+  const fallback = ['road','coat','show','below','float','groan','elbow','narrow','shadow','throat','rainbow','window'];
+  const useWords = words.length >= 3 ? words : fallback;
+  if (id==='findsound')   gFindSound(c);
+  else if (id==='scramble')   gScramble(c,useWords);
+  else if (id==='builder')    gBuilder(c,useWords);
+  else if (id==='syllables')  gSyllables(c,useWords);
+  else if (id==='memory')     gMemory(c,useWords);
+  else if (id==='missing')    gMissing(c,useWords);
+  else if (id==='categorise') gCategorise(c,useWords);
+  else if (id==='breaker')    gBreaker(c,useWords);
+  else if (id==='joiner')     gJoiner(c,useWords);
+  else if (id==='sentences')  gSentences(c,useWords);
+  else if (id==='alpha')      gAlpha(c,useWords);
+  else if (id==='pyramid')    gPyramid(c,useWords);
+  else if (id==='vowcons')    gVowCons(c,useWords);
+  else if (id==='wordsearch') gWordSearch(c,useWords);
+  else if (id==='crossword')  gCrossword(c,useWords);
+  else if (id==='wordle')     gWordle(c,useWords);
 }
 
 // ── FIND THE SOUND ──
@@ -1123,10 +1514,60 @@ function gFindSound(c) {
   const focus = d?.focus || 'This week\'s spelling focus';
   const defaultPassage = d?.passage && d.passage.trim() ? d.passage : '';
   const words = d?.words || [];
+
+  // ── PATTERN DETECTION ──
+  // Step 1: Extract patterns directly from the focus text you type in Admin
+  // Looks for quoted patterns like 'oa', "igh", or patterns in /slashes/
   let patterns = [];
-  const commonPats = ['oa','ow','igh','tion','ea','un','ing','mis','dis','pre','rupt','aud','port','ph','graph','scope','kn','wr','gn','ck','ch','sh','th','wh'];
-  commonPats.forEach(p => { if(words.some(w=>w.toLowerCase().includes(p))) patterns.push(p); });
-  if (!patterns.length) patterns = ['oa','ow'];
+  const focusLower = focus.toLowerCase();
+
+  // Extract anything in single quotes, double quotes, or forward slashes
+  const quoted = [...focus.matchAll(/['"]([a-z\-]+)['"]/gi), ...focus.matchAll(/\/([a-z\-]+)\//gi)];
+  quoted.forEach(m => { const p = m[1].toLowerCase(); if(p.length >= 1 && p.length <= 6 && !patterns.includes(p)) patterns.push(p); });
+
+  // Step 2: Simple keyword matching using string includes (no regex — safe from escaping issues)
+  const KNOWN_PATTERNS = [
+    'oa','ow','ai','ay','ee','ea','ie','ei','oo','ou','oi','oy','au','aw','ew','ue','ui','oe',
+    'igh','tion','sion','cian','tch','dge','ph','gh','wh','ch','sh','th','kn','wr','gn','mb','ck','ng','nk',
+    'un','re','pre','mis','dis','anti','over','super',
+    'ing','ed','ly','er','est','ful','less','ness','ment',
+    'port','rupt','aud','graph','phon','scop','dict','scrib'
+  ];
+  KNOWN_PATTERNS.forEach(function(pat) {
+    if(patterns.includes(pat)) return;
+    var wrappers = ["'"+pat+"'", '"'+pat+'"', '/'+pat+'/', '-'+pat, pat+'-',
+                    ' '+pat+' ', pat+')', '('+pat, ':'+pat, pat+','];
+    var found = wrappers.some(function(w){ return focusLower.indexOf(w) !== -1; });
+    if(!found && (focusLower.indexOf('suffix') !== -1 || focusLower.indexOf('prefix') !== -1 ||
+       focusLower.indexOf('silent') !== -1 || focusLower.indexOf('root') !== -1)) {
+      found = focusLower.indexOf(pat) !== -1;
+    }
+    if(found) patterns.push(pat);
+  });
+  // Deduplicate
+  patterns = patterns.filter(function(p,i){ return patterns.indexOf(p)===i; });
+  // Described vowel sounds
+  if(focusLower.indexOf('long') !== -1) {
+    if(focusLower.indexOf(' a') !== -1 && patterns.indexOf('ay')===-1)  patterns.push('ay');
+    if(focusLower.indexOf(' e') !== -1 && patterns.indexOf('ee')===-1)  patterns.push('ee');
+    if(focusLower.indexOf(' i') !== -1 && patterns.indexOf('igh')===-1) patterns.push('igh');
+    if(focusLower.indexOf(' o') !== -1 && patterns.indexOf('oa')===-1)  patterns.push('oa');
+    if(focusLower.indexOf(' u') !== -1 && patterns.indexOf('ue')===-1)  patterns.push('ue');
+  }
+  if(focusLower.indexOf('schwa') !== -1 && patterns.indexOf('er')===-1) patterns.push('er');
+
+  // Step 3: Fall back to deriving patterns from the word list itself
+  if(patterns.length === 0) {
+    const commonPats = ['oa','ow','igh','tion','ea','un','ing','mis','dis','pre','rupt','aud','port','ph','graph','scope','kn','wr','gn','ck','ch','sh','th','wh','ai','ay','ee','ie','ou','oi','au','aw'];
+    commonPats.forEach(p => { if(words.some(w=>w.toLowerCase().includes(p))) patterns.push(p); });
+  }
+
+  // Always ensure at least one pattern
+  if(patterns.length === 0) patterns = ['th'];
+
+  // Remove very short patterns that would match too many words (single letters)
+  patterns = patterns.filter(p => p.length >= 2);
+  if(patterns.length === 0) patterns = ['th'];
   let passage = defaultPassage;
   let highlighted = new Set();
   let mode = 'click';
@@ -1261,8 +1702,8 @@ function gSyllables(c,words){
     <div style="display:flex;gap:9px;justify-content:center"><button class="gbtn p" onclick="chkSyl(${exp},'${word}')">Check!</button><button class="gbtn s" onclick="nxtSyl(${words.length})">Next →</button></div>
     <div id="fb" style="min-height:40px;margin-top:10px"></div>`;
   }
-  window.clap=()=>{cnt++;document.getElementById('sc').textContent=cnt+' '+'👏'.repeat(Math.min(cnt,8));};
-  window.rclap=()=>{cnt=0;document.getElementById('sc').textContent='—';document.getElementById('fb').innerHTML='';};
+  window.clap=()=>{cnt++;const el=document.getElementById('sc');if(el)el.textContent=cnt+' '+'👏'.repeat(Math.min(cnt,8));};
+  window.rclap=()=>{cnt=0;const el=document.getElementById('sc');if(el)el.textContent='—';const fb=document.getElementById('fb');if(fb)fb.innerHTML='';};
   window.chkSyl=(exp,word)=>{const fb=document.getElementById('fb');if(cnt===exp){correct++;fb.innerHTML=`<div class="gfb ok">🎉 Yes! ${exp} syllable${exp>1?'s':''}!</div>`;if(correct>=3&&!done){done=true;awardStar('syllables');}idx++;setTimeout(render,1200);}else{fb.innerHTML=`<div class="gfb ng">"${word}" has ${exp} syllable${exp>1?'s':''}. You tapped ${cnt}.</div>`;}};
   window.nxtSyl=len=>{idx=(idx+1)%len;render();};
   render();
@@ -1280,7 +1721,26 @@ function gMemory(c,words){
     <div class="mg" id="mg"></div><div id="fb" style="min-height:40px;margin-top:10px"></div>`;paint();
   }
   function paint(){const g=document.getElementById('mg');if(!g)return;g.innerHTML=pairs.map(p=>{const iF=fl.includes(p.id)||mt.includes(p.pid);const iM=mt.includes(p.pid);return`<div class="mc${iM?' mt':iF?' fl':' bk'}" onclick="mF(${p.id},${p.pid})">${iF||iM?p.val:'?'}</div>`;}).join('');}
-  window.mF=(id,pid)=>{if(lk||fl.includes(id)||mt.includes(pid))return;fl.push(id);paint();if(fl.length===2){lk=true;const[a,b]=fl;const ca=pairs.find(p=>p.id===a),cb=pairs.find(p=>p.id===b);if(ca&&cb&&ca.pid===cb.pid&&a!==b){mt.push(ca.pid);const m=document.getElementById('mm');if(m)m.textContent=mt.length;fl=[];lk=false;paint();if(mt.length===uw.length){awardStar('memory');setTimeout(()=>{const fb=document.getElementById('fb');if(fb)fb.innerHTML='<div class="gfb ok">🎉 All matched!</div>';},200);}}else{setTimeout(()=>{fl=[];lk=false;paint();},900);}}};
+  window.mF=(id,pid)=>{
+    if(lk||fl.includes(id)||mt.includes(pid)) return;
+    fl.push(id); paint();
+    if(fl.length===2){
+      lk=true;
+      const[a,b]=fl;
+      const ca=pairs.find(p=>p.id===a),cb=pairs.find(p=>p.id===b);
+      if(ca&&cb&&ca.pid===cb.pid&&a!==b){
+        mt.push(ca.pid);
+        const m=document.getElementById('mm');if(m)m.textContent=mt.length;
+        fl=[];lk=false;paint();
+        if(mt.length===uw.length){
+          awardStar('memory');
+          setTimeout(()=>{const fb=document.getElementById('fb');if(fb)fb.innerHTML='<div class="gfb ok">🎉 All matched!</div>';},200);
+        }
+      } else {
+        setTimeout(()=>{fl=[];lk=false;paint();},900);
+      }
+    }
+  };
   render();
 }
 
@@ -1309,8 +1769,9 @@ function gCategorise(c,words){
   <div style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px" id="cw">${use.map(w=>`<div class="cati" draggable="true" data-word="${w}" ondragstart="cDS(event)">${w}</div>`).join('')}</div>
   <div class="catg">${cats.map(cat=>`<div class="catb" ondragover="cDO(event)" ondrop="cDR(event,'${cat}')"><div class="cabt">${cat}</div><div id="bk-${cat.replace(' ','-')}"></div></div>`).join('')}</div>
   <button class="gbtn p" style="margin-top:12px" onclick="awardStar('categorise');toast('Great sorting!')">✓ Done!</button>`;
-  window.cDS=e=>{e.dataTransfer.setData('text',e.target.dataset.word);window._de=e.target;};
+  window.cDS=e=>{if(e.dataTransfer)e.dataTransfer.setData('text',e.target.dataset.word);window._de=e.target;};
   window.cDO=e=>{e.preventDefault();e.currentTarget.classList.add('dov');};
+  window.cDL=e=>{e.currentTarget.classList.remove('dov');};
   window.cDR=(e,cat)=>{e.preventDefault();e.currentTarget.classList.remove('dov');const el=window._de;if(!el)return;const w=el.dataset.word;el.remove();const bk=document.getElementById('bk-'+cat.replace(' ','-'));if(bk){const d=document.createElement('div');d.className='cati';d.textContent=w;bk.appendChild(d);}};
 }
 
@@ -1552,7 +2013,7 @@ function gVowCons(c,words){
 // ── WORD SEARCH ──
 function gWordSearch(c,words){
   const SIZE=12;
-  const useWords=words.filter(w=>w.length<=SIZE && w.length>=3).slice(0,8).map(w=>w.toUpperCase());
+  const useWords=words.filter(w=>w.length<=SIZE&&w.length>=3).slice(0,8).map(w=>w.toUpperCase());
   const grid=Array.from({length:SIZE},()=>Array(SIZE).fill(''));
   const placed=[];
   const DIRS=[[0,1],[1,0],[1,1],[0,-1],[-1,0],[-1,-1],[1,-1],[-1,1]];
@@ -1570,7 +2031,9 @@ function gWordSearch(c,words){
         if(grid[nr][nc]&&grid[nr][nc]!==word[i]){ok=false;break;}
         cells.push([nr,nc]);
       }
-      if(ok){cells.forEach(([nr,nc],i)=>grid[nr][nc]=word[i]);placed.push({word,cells});return true;}
+      if(ok){
+        cells.forEach(([nr,nc],i)=>grid[nr][nc]=word[i]);
+        placed.push({word,cells});return true;}
     }
     return false;
   }
@@ -1578,69 +2041,200 @@ function gWordSearch(c,words){
   const ALPHA='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   for(let r=0;r<SIZE;r++)for(let co=0;co<SIZE;co++)if(!grid[r][co])grid[r][co]=ALPHA[Math.floor(Math.random()*26)];
 
-  let selecting=false,selStart=null,selCells=new Set(),foundWords=new Set(),allFound=false;
+  // State
+  let isSelecting=false;
+  let selStart=null;
+  let selCells=new Set();
+  let foundCells=new Set(); // permanent green cells
+  let foundWords=new Set();
+  let allFound=false;
 
   function cellKey(r,co){return r+','+co;}
-  function renderGrid(){
-    return `<div style="display:inline-grid;grid-template-columns:repeat(${SIZE},1fr);gap:2px;background:rgba(255,255,255,.04);padding:10px;border-radius:14px;border:1.5px solid var(--bdr);user-select:none">
-      ${grid.map((row,r)=>row.map((cell,co)=>{
-        const key=cellKey(r,co);
-        const isSel=selCells.has(key);
-        const isFound=[...foundWords].some(fw=>placed.find(p=>p.word===fw)?.cells.some(([fr,fc])=>fr===r&&fc===co));
-        const bg=isFound?'rgba(34,197,94,.35)':isSel?'rgba(78,205,196,.35)':'transparent';
-        const bdr=isFound?'var(--green)':isSel?'var(--teal)':'transparent';
-        return `<div id="wsc-${r}-${co}" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:15px;color:var(--txt);background:${bg};border:1.5px solid ${bdr};border-radius:5px;cursor:pointer;transition:all .15s"
-          onmousedown="wsStart(${r},${co})" onmouseover="wsDrag(${r},${co})" onmouseup="wsEnd(${r},${co})"
-          ontouchstart="wsStart(${r},${co})" ontouchend="wsEnd(${r},${co})">${cell}</div>`;
-      }).join('')).join('')}
-    </div>`;
+
+  function getLineKeys(sr,sc,er,ec){
+    const dr=er-sr, dc=ec-sc;
+    if(dr===0 && dc===0) return [cellKey(sr,sc)];
+    // Snap to the nearest of 8 valid directions
+    // Determine dominant direction
+    let nr, nc;
+    if(dr===0){ nr=0; nc=dc>0?1:-1; }
+    else if(dc===0){ nr=dr>0?1:-1; nc=0; }
+    else if(Math.abs(dr)===Math.abs(dc)){ nr=dr>0?1:-1; nc=dc>0?1:-1; }
+    else {
+      // Not a clean 8-direction — snap to whichever is longer
+      if(Math.abs(dr)>Math.abs(dc)){ nr=dr>0?1:-1; nc=0; }
+      else{ nr=0; nc=dc>0?1:-1; }
+    }
+    const len = nr===0 ? Math.abs(dc) : nc===0 ? Math.abs(dr) : Math.min(Math.abs(dr),Math.abs(dc));
+    const keys=[];
+    for(let i=0;i<=len;i++) keys.push(cellKey(sr+nr*i,sc+nc*i));
+    return keys;
   }
+
+  function cellFromEvent(e){
+    // Get x/y correctly for both mouse and touch events
+    let x, y;
+    if(e.touches && e.touches.length > 0){
+      x = e.touches[0].clientX;
+      y = e.touches[0].clientY;
+    } else if(e.changedTouches && e.changedTouches.length > 0){
+      x = e.changedTouches[0].clientX;
+      y = e.changedTouches[0].clientY;
+    } else {
+      x = e.clientX;
+      y = e.clientY;
+    }
+    const el = document.elementFromPoint(x, y);
+    if(!el || !el.id || !el.id.startsWith('wsc-')) return null;
+    const parts = el.id.split('-');
+    if(parts.length < 3) return null;
+    return {r: parseInt(parts[1]), co: parseInt(parts[2])};
+  }
+
+  function paintCells(){
+    // Update only cells that are selected or found (much faster than updating all 144)
+    const allRelevant = new Set([...foundCells, ...selCells]);
+    // First reset any previously highlighted cells that are no longer selected
+    if(window._wsPrevSel){
+      window._wsPrevSel.forEach(key=>{
+        if(!foundCells.has(key)&&!selCells.has(key)){
+          const[r,co]=key.split(',');
+          const el=document.getElementById('wsc-'+r+'-'+co);
+          if(el){el.style.background='transparent';el.style.borderColor='transparent';el.style.color='var(--txt)';el.style.fontWeight='400';}
+        }
+      });
+    }
+    window._wsPrevSel=new Set(selCells);
+    // Now paint found and selected
+    allRelevant.forEach(key=>{
+      const[r,co]=key.split(',');
+      const el=document.getElementById('wsc-'+r+'-'+co);
+      if(!el) return;
+      const isF=foundCells.has(key);
+      const isS=selCells.has(key);
+      el.style.background=isF?'rgba(34,197,94,.5)':isS?'rgba(78,205,196,.55)':'transparent';
+      el.style.borderColor=isF?'var(--green)':isS?'var(--teal)':'transparent';
+      el.style.color=isF?'#fff':isS?'var(--navy)':'var(--txt)';
+      el.style.fontWeight=isF||isS?'900':'400';
+    });
+  }
+
+  function checkSelection(){
+    placed.forEach(({word,cells})=>{
+      if(foundWords.has(word)) return;
+      // Must select exactly the right cells (same count, all matching)
+      const fwd = cells.length===selCells.size && cells.every(([r,co])=>selCells.has(cellKey(r,co)));
+      const rev = cells.length===selCells.size && [...cells].reverse().every(([r,co])=>selCells.has(cellKey(r,co)));
+      if(fwd||rev){
+        foundWords.add(word);
+        cells.forEach(([r,co])=>foundCells.add(cellKey(r,co)));
+        toast('✅ Found: '+word);
+        const wl=document.getElementById('ws-wl');
+        if(wl) wl.innerHTML=renderWordList();
+        const cnt=document.getElementById('ws-count');
+        if(cnt) cnt.textContent=foundWords.size;
+        if(foundWords.size===useWords.length&&!allFound){
+          allFound=true;
+          const fb=document.getElementById('fb');
+          if(fb) fb.innerHTML='<div class="gfb ok">🎉 All words found! Amazing!</div>';
+          awardStar('wordsearch');
+        }
+      }
+    });
+  }
+
+  function onDown(e){
+    e.preventDefault();
+    const cell=cellFromEvent(e);
+    if(!cell) return;
+    isSelecting=true;
+    selStart={r:cell.r,co:cell.co};
+    selCells=new Set([cellKey(cell.r,cell.co)]);
+    paintCells();
+  }
+  function onMove(e){
+    e.preventDefault();
+    if(!isSelecting||!selStart) return;
+    const cell=cellFromEvent(e);
+    if(!cell) return;
+    const keys=getLineKeys(selStart.r,selStart.co,cell.r,cell.co);
+    selCells=new Set(keys);
+    paintCells();
+  }
+  function onUp(e){
+    if(!isSelecting) return;
+    isSelecting=false;
+    checkSelection();
+    selCells=new Set();
+    paintCells();
+    selStart=null;
+  }
+
   function renderWordList(){
     return useWords.map(w=>`<div style="font-size:13px;font-weight:700;padding:4px 10px;border-radius:8px;${foundWords.has(w)?'text-decoration:line-through;color:var(--green);background:rgba(34,197,94,.1)':'color:var(--txt2)'}">${w}</div>`).join('');
   }
+
+  function buildGrid(){
+    let html=`<div id="ws-grid-inner" style="display:inline-grid;grid-template-columns:repeat(${SIZE},1fr);gap:2px;background:rgba(255,255,255,.04);padding:10px;border-radius:14px;border:1.5px solid var(--bdr);user-select:none;touch-action:none;cursor:crosshair">`;
+    for(let r=0;r<SIZE;r++){
+      for(let co=0;co<SIZE;co++){
+        html+=`<div id="wsc-${r}-${co}" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:15px;color:var(--txt);border:1.5px solid transparent;border-radius:5px;transition:background .1s,border-color .1s">${grid[r][co]}</div>`;
+      }
+    }
+    html+='</div>';
+    return html;
+  }
+
   function build(){
     c.innerHTML=`<div class="gtit">🔎 Word Search</div>
-    <div class="gsub">Find all the spelling words hidden in the grid! Click and drag to select.</div>
+    <div class="gsub">Click and drag across letters to select a word. Works in all 8 directions!</div>
     <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
-      <div id="ws-grid">${renderGrid()}</div>
+      <div id="ws-grid-wrap">${buildGrid()}</div>
       <div>
         <div style="font-size:11px;color:var(--txt2);font-weight:700;text-transform:uppercase;margin-bottom:8px">Find these words:</div>
         <div id="ws-wl" style="display:flex;flex-direction:column;gap:4px">${renderWordList()}</div>
-        <div style="margin-top:14px;font-size:13px;color:var(--txt2)">Found: <span id="ws-count" style="color:var(--gold);font-weight:800">${foundWords.size}</span>/${useWords.length}</div>
-        <button class="gbtn s" style="margin-top:10px;font-size:12px" onclick="wsNew()">New Puzzle</button>
+        <div style="margin-top:14px;font-size:13px;color:var(--txt2)">Found: <span id="ws-count" style="color:var(--gold);font-weight:800">0</span>/${useWords.length}</div>
+        <button class="gbtn s" style="margin-top:10px;font-size:12px" onclick="window.wsNew()">New Puzzle</button>
       </div>
     </div>
     <div id="fb" style="min-height:36px;margin-top:10px"></div>`;
+
+    // Attach events to the grid container — NOT individual cells
+    const gridEl=document.getElementById('ws-grid-inner');
+    if(!gridEl) return;
+
+    // Remove any old listeners
+    if(window._wsDownHandler) document.removeEventListener('mousedown', window._wsDownHandler);
+    if(window._wsMoveHandler) document.removeEventListener('mousemove', window._wsMoveHandler);
+    if(window._wsUpHandler)   document.removeEventListener('mouseup',   window._wsUpHandler);
+    if(window._wsTDownHandler) gridEl.removeEventListener('touchstart', window._wsTDownHandler);
+    if(window._wsTMoveHandler) gridEl.removeEventListener('touchmove',  window._wsTMoveHandler);
+    if(window._wsTUpHandler)   gridEl.removeEventListener('touchend',   window._wsTUpHandler);
+
+    // Mouse: start only on grid, move + end globally so drag outside grid ends cleanly
+    window._wsDownHandler = function(e){ if(e.target.closest('#ws-grid-inner')) onDown(e); };
+    window._wsMoveHandler = function(e){ if(isSelecting) onMove(e); };
+    window._wsUpHandler   = function(e){ if(isSelecting) onUp(e); };
+    document.addEventListener('mousedown', window._wsDownHandler);
+    document.addEventListener('mousemove', window._wsMoveHandler);
+    document.addEventListener('mouseup',   window._wsUpHandler);
+
+    // Touch
+    window._wsTDownHandler = function(e){ onDown(e); };
+    window._wsTMoveHandler = function(e){ onMove(e); };
+    window._wsTUpHandler   = function(e){ onUp(e); };
+    gridEl.addEventListener('touchstart', window._wsTDownHandler, {passive:false});
+    gridEl.addEventListener('touchmove',  window._wsTMoveHandler, {passive:false});
+    gridEl.addEventListener('touchend',   window._wsTUpHandler,   {passive:false});
   }
-  window.wsStart=function(r,co){selecting=true;selStart=[r,co];selCells=new Set([cellKey(r,co)]);updateGrid();};
-  window.wsDrag=function(r,co){
-    if(!selecting||!selStart) return;
-    const[sr,sc]=selStart;const dr=r-sr,dc=co-sc;
-    const len=Math.max(Math.abs(dr),Math.abs(dc));
-    if(len===0){selCells=new Set([cellKey(sr,sc)]);updateGrid();return;}
-    const nr=dr===0?0:(dr>0?1:-1),nc=dc===0?0:(dc>0?1:-1);
-    selCells=new Set();
-    for(let i=0;i<=len;i++) selCells.add(cellKey(sr+nr*i,sc+nc*i));
-    updateGrid();
+
+  window.wsNew=function(){
+    // Clean up listeners before rebuilding
+    document.removeEventListener('mousedown', window._wsDownHandler);
+    document.removeEventListener('mousemove', window._wsMoveHandler);
+    document.removeEventListener('mouseup',   window._wsUpHandler);
+    gWordSearch(c,words);
   };
-  window.wsEnd=function(){
-    selecting=false;
-    // Check if selection matches any word
-    const selArr=[...selCells].map(k=>{const[r,c]=k.split(',').map(Number);return[r,c];});
-    placed.forEach(({word,cells})=>{
-      if(foundWords.has(word)) return;
-      const match=cells.length===selArr.length&&cells.every(([r,co])=>selCells.has(cellKey(r,co)));
-      const matchRev=cells.length===selArr.length&&[...cells].reverse().every(([r,co])=>selCells.has(cellKey(r,co)));
-      if(match||matchRev){foundWords.add(word);toast('Found: '+word+' ✓');}
-    });
-    selCells=new Set();
-    const cnt=document.getElementById('ws-count');if(cnt)cnt.textContent=foundWords.size;
-    document.getElementById('ws-wl').innerHTML=renderWordList();
-    updateGrid();
-    if(foundWords.size===useWords.length&&!allFound){allFound=true;document.getElementById('fb').innerHTML='<div class="gfb ok">🎉 All words found!</div>';awardStar('wordsearch');}
-  };
-  function updateGrid(){const g=document.getElementById('ws-grid');if(g)g.innerHTML=renderGrid();}
-  window.wsNew=function(){gWordSearch(c,words);};
   build();
 }
 
@@ -1858,15 +2452,15 @@ function gWordle(c,words){
     document.getElementById('wd-kb').innerHTML=renderKeyboard();
   };
   // Physical keyboard support
-  if(!window._wdKeyListener){
-    window._wdKeyListener=true;
-    document.addEventListener('keydown',function wdKL(e){
-      if(!document.getElementById('wd-board')){document.removeEventListener('keydown',wdKL);window._wdKeyListener=false;return;}
-      if(e.key==='Enter')window.wdKey('↵');
-      else if(e.key==='Backspace')window.wdKey('⌫');
-      else if(/^[a-zA-Z]$/.test(e.key))window.wdKey(e.key.toLowerCase());
-    });
-  }
+  // Remove old keyboard listener if present
+  if(window._wdKL){ document.removeEventListener('keydown',window._wdKL); }
+  window._wdKL=function(e){
+    if(!document.getElementById('wd-board')){ document.removeEventListener('keydown',window._wdKL); window._wdKL=null; return; }
+    if(e.key==='Enter') window.wdKey('↵');
+    else if(e.key==='Backspace') window.wdKey('⌫');
+    else if(/^[a-zA-Z]$/.test(e.key)) window.wdKey(e.key.toLowerCase());
+  };
+  document.addEventListener('keydown',window._wdKL);
   build();
 }
 
@@ -2366,8 +2960,12 @@ function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t
 // ── INIT ──
 initStars();
 mkWeekPills('week-pills',(w,b)=>{ S.week=w; attachWeekListener(); refreshAll(); },1);
-// Start week listener for default view
-document.addEventListener('fbReady', () => attachWeekListener());
+sbBuildWeeks(); // Build sidebar week grid
+document.addEventListener('fbReady', () => {
+  attachWeekListener();
+  renderLoginGrid();
+  updateSbWeekHighlights();
+});
 document.getElementById('cust-in')?.addEventListener('keydown',e=>{if(e.key==='Enter')addCust();});
 </script>
 </body>
