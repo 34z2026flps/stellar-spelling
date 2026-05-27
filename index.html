@@ -581,6 +581,7 @@ h2.vt{font-family:var(--fd);font-size:24px;color:var(--txt);margin-bottom:5px}
       <div class="ac" id="ac-wordle" onclick="launch('wordle')"><div class="ai">🟩</div><div class="an">Wordle</div><div class="ad">Guess the spelling word</div></div>
       <div class="ac" id="ac-galaxyquest" onclick="launch('galaxyquest')" style="border-color:rgba(168,85,247,.5);background:rgba(168,85,247,.08)"><div class="ai">🌌</div><div class="an">Galaxy Quest</div><div class="ad">All-words boss challenge!</div></div>
       <div class="ac" id="ac-spellbee" onclick="launch('spellbee')" style="border-color:rgba(245,200,66,.5);background:rgba(245,200,66,.08)"><div class="ai">🐝</div><div class="an">Spelling Bee</div><div class="ad">Rapid-fire streak challenge</div></div>
+      <div class="ac" id="ac-mapspell" onclick="launch('mapspell')" style="border-color:rgba(78,205,196,.5);background:rgba(78,205,196,.07)"><div class="ai">🗺️</div><div class="an">Map It, Spell It</div><div class="ad">Type phonemes into the grid</div></div>
     </div>
     <div class="gc" id="game-container">
       <div style="text-align:center;padding:36px 0;color:var(--txt2)"><div style="font-size:44px;margin-bottom:10px">🎮</div><div style="font-family:var(--fd);font-size:18px">Pick an activity above to begin!</div></div>
@@ -781,8 +782,8 @@ const ANIMALS = ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨',
 const SYLMAP = {road:1,coat:1,show:1,below:2,float:1,groan:1,elbow:2,narrow:2,shadow:2,throat:1,rainbow:2,window:2,light:1,might:1,night:1,right:1,bright:1,delight:2,action:2,nation:2,station:3,mention:2,fraction:2,photograph:3,telescope:3,microscope:3,biography:4,geography:4,transport:2,disrupt:2,audible:3,interrupt:3,Wednesday:3,different:3,interesting:4,separate:3,running:2,jumping:2,hopping:2,sitting:2};
 const BRKMAP = {road:'road',coat:'coat',show:'show',below:'be·low',float:'float',groan:'groan',elbow:'el·bow',narrow:'nar·row',shadow:'sha·dow',throat:'throat',rainbow:'rain·bow',window:'win·dow',action:'ac·tion',station:'sta·tion',mention:'men·tion',fraction:'frac·tion',photograph:'pho·to·graph',telescope:'tel·e·scope',microscope:'mi·cro·scope',biography:'bi·og·ra·phy',transport:'trans·port',interrupt:'in·ter·rupt',Wednesday:'Wed·nes·day',different:'dif·fer·ent',interesting:'in·ter·est·ing',separate:'sep·a·rate'};
 
-const ACT_NAMES = {findsound:'Find the Sound',scramble:'Word Scramble',builder:'Word Builder',syllables:'Syllables',categorise:'Categorise',memory:'Memory Match',missing:'Missing Letters',breaker:'Word Breaker',joiner:'Word Joiner',sentences:'Sentence Write',alpha:'Alphabetical Order',pyramid:'Pyramid Spelling',vowcons:'Vowels & Consonants',wordsearch:'Word Search',crossword:'Crossword',wordle:'Wordle',galaxyquest:'Galaxy Quest',spellbee:'Spelling Bee'};
-const ACT_ICONS = {findsound:'🔎',scramble:'🔀',builder:'🧱',syllables:'👏',categorise:'🗂️',memory:'🃏',missing:'🔍',breaker:'✂️',joiner:'🔗',sentences:'✏️',alpha:'🔤',pyramid:'🔺',vowcons:'🎨',wordsearch:'🔎',crossword:'✏️',wordle:'🟩',galaxyquest:'🌌',spellbee:'🐝'};
+const ACT_NAMES = {findsound:'Find the Sound',scramble:'Word Scramble',builder:'Word Builder',syllables:'Syllables',categorise:'Categorise',memory:'Memory Match',missing:'Missing Letters',breaker:'Word Breaker',joiner:'Word Joiner',sentences:'Sentence Write',alpha:'Alphabetical Order',pyramid:'Pyramid Spelling',vowcons:'Vowels & Consonants',wordsearch:'Word Search',crossword:'Crossword',wordle:'Wordle',galaxyquest:'Galaxy Quest',spellbee:'Spelling Bee',mapspell:'Map It, Spell It'};
+const ACT_ICONS = {findsound:'🔎',scramble:'🔀',builder:'🧱',syllables:'👏',categorise:'🗂️',memory:'🃏',missing:'🔍',breaker:'✂️',joiner:'🔗',sentences:'✏️',alpha:'🔤',pyramid:'🔺',vowcons:'🎨',wordsearch:'🔎',crossword:'✏️',wordle:'🟩',galaxyquest:'🌌',spellbee:'🐝',mapspell:'🗺️'};
 
 // App state
 let S = { group:'comets', term:1, week:1, customWords:[], adminGroup:'comets', adminTerm:1, adminWeek:1 };
@@ -1492,6 +1493,7 @@ function launch(id) {
   // Galaxy Quest and Spelling Bee load their own words from Firebase history
   if (id==='galaxyquest') { gGalaxyQuest(c); return; }
   if (id==='spellbee')    { gSpellBee(c);    return; }
+  if (id==='mapspell')   { gMapSpell(c,words); return; }
   // All other games need current week words
   const words = getSW();
   const fallback = ['road','coat','show','below','float','groan','elbow','narrow','shadow','throat','rainbow','window'];
@@ -2958,6 +2960,299 @@ function gSpellBee(c) {
       </div>
     </div>`;
   }
+}
+
+
+// ── MAP IT, SPELL IT ──
+function gMapSpell(c, words) {
+  // Phoneme map — covers the most common English phoneme patterns
+  // Each entry: [phoneme_display, ...spellings_that_produce_it]
+  const PHONEME_MAP = [
+    // Consonants
+    ['b',['b','bb']],['d',['d','dd','ed']],['f',['f','ff','ph','gh']],
+    ['g',['g','gg']],['h',['h']],['j',['j','g','ge','dge']],
+    ['k',['k','c','ck','ch','q']],['l',['l','ll']],['m',['m','mm','mb']],
+    ['n',['n','nn','kn','gn']],['p',['p','pp']],['r',['r','rr','wr']],
+    ['s',['s','ss','c','ce','se']],['t',['t','tt','ed']],['v',['v','ve']],
+    ['w',['w','wh']],['y',['y']],['z',['z','zz','s','se','ze']],
+    // Digraphs
+    ['ch',['ch','tch']],['sh',['sh','ti','ci','si']],
+    ['th',['th']],['ng',['ng','n']],['wh',['wh']],
+    ['zh',['s','si','z']],['ph',['ph','f']],
+    // Short vowels
+    ['a',['a']],['e',['e','ea']],['i',['i','y']],['o',['o']],['u',['u','o']],
+    // Long vowels
+    ['ai',['a_e','ai','ay','eigh','ey','a']],
+    ['ee',['ee','ea','e_e','ie','e','y','ey','ei']],
+    ['igh',['i_e','igh','ie','y','i']],
+    ['oa',['o_e','oa','ow','oe','o']],
+    ['oo',['oo','u_e','ue','ew','ou','ui','o']],
+    // Other vowels
+    ['oo',['oo','u','oul']],
+    ['ar',['ar','a']],['or',['or','aw','au','oor','our','al']],
+    ['ur',['ur','er','ir','ear','or']],
+    ['ow',['ow','ou']],['oi',['oi','oy']],
+    ['air',['air','are','ear','ere']],['ear',['ear','eer','ere']],
+  ];
+
+  // Auto-segment a word into phonemes (best-effort heuristic)
+  function autoSegment(word) {
+    const w = word.toLowerCase();
+    const segments = [];
+    let i = 0;
+    while (i < w.length) {
+      // Try longest match first (trigraph, digraph, single)
+      const tri = w.slice(i, i+3);
+      const di  = w.slice(i, i+2);
+      const mono = w[i];
+      // Common trigraphs
+      if (['tch','dge','igh','thr','shr','spl','str','spr'].includes(tri)) {
+        segments.push(tri); i+=3;
+      }
+      // Common digraphs
+      else if (['ch','sh','th','wh','ph','ng','nk','ck','ai','ay','ea','ee',
+                'oa','oo','ou','ow','oi','oy','au','aw','ar','or','ur','er',
+                'ir','kn','wr','gn','mb','qu'].includes(di)) {
+        segments.push(di); i+=2;
+      }
+      // Silent e pattern: consonant + e at end — attach to previous
+      else if (mono === 'e' && i === w.length-1 && segments.length > 0) {
+        segments[segments.length-1] += 'e';
+        i++;
+      }
+      else { segments.push(mono); i++; }
+    }
+    return segments;
+  }
+
+  const useWords = words.filter(w => /^[a-zA-Z]+$/.test(w)).slice(0, 8);
+  if (!useWords.length) {
+    c.innerHTML = '<div style="padding:30px;text-align:center;color:var(--txt2)">No words available.</div>';
+    return;
+  }
+
+  // Pre-segment all words
+  const wordData = useWords.map(w => ({
+    word: w.toLowerCase(),
+    segments: autoSegment(w.toLowerCase()),
+    userInput: [],
+    checked: false,
+    correct: null
+  }));
+
+  const MAX_CELLS = Math.max(...wordData.map(d => d.segments.length));
+
+  function renderGrid() {
+    let html = `
+    <div style="overflow-x:auto">
+    <table id="mapspell-table" style="border-collapse:separate;border-spacing:4px;margin-bottom:16px">`;
+
+    wordData.forEach((wd, wi) => {
+      html += `<tr>`;
+      // Phoneme cells
+      for (let ci = 0; ci < MAX_CELLS; ci++) {
+        const seg = wd.segments[ci] || null;
+        const val = wd.userInput[ci] || '';
+        const isActive = !!seg;
+        let cellStyle = `width:44px;height:44px;border-radius:8px;border:2.5px solid;text-align:center;
+          font-family:var(--fd);font-size:${seg && seg.length > 2 ? '13' : '17'}px;font-weight:700;
+          outline:none;padding:0;cursor:${isActive?'text':'default'};
+          transition:background .15s,border-color .15s;`;
+
+        if (!isActive) {
+          cellStyle += 'background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.08);color:transparent;';
+        } else if (wd.checked) {
+          const isRight = val.trim().toLowerCase() === seg.toLowerCase();
+          cellStyle += isRight
+            ? 'background:rgba(34,197,94,.25);border-color:var(--green);color:var(--green);'
+            : 'background:rgba(255,107,107,.2);border-color:var(--coral);color:var(--coral);';
+        } else {
+          cellStyle += val
+            ? 'background:rgba(78,205,196,.18);border-color:var(--teal);color:var(--teal);'
+            : 'background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.2);color:var(--txt);';
+        }
+
+        if (isActive) {
+          html += `<td><input
+            id="ms-${wi}-${ci}"
+            maxlength="4"
+            value="${val}"
+            style="${cellStyle}"
+            autocomplete="off" autocorrect="off" spellcheck="false"
+            oninput="msInput(${wi},${ci},this.value)"
+            onkeydown="msNav(event,${wi},${ci},${MAX_CELLS},${wordData.length})"
+            onfocus="this.style.borderColor='var(--gold)';this.style.background='rgba(245,200,66,.12)'"
+            onblur="msRefreshCell(${wi},${ci})"
+          ></td>`;
+        } else {
+          html += `<td><div style="${cellStyle}"></div></td>`;
+        }
+      }
+      // Divider
+      html += `<td style="width:12px"></td>`;
+      // Full word column
+      const allFilled = wd.segments.every((_,ci) => (wd.userInput[ci]||'').trim());
+      const isRight = wd.checked && wd.segments.every((seg,ci) => (wd.userInput[ci]||'').trim().toLowerCase() === seg.toLowerCase());
+      html += `<td style="padding-left:6px;white-space:nowrap">
+        <span style="font-family:var(--fd);font-size:18px;
+          color:${wd.checked ? (isRight ? 'var(--green)' : 'var(--coral)') : 'var(--txt2)'};
+          ${!wd.checked && allFilled ? 'color:var(--teal)' : ''}">
+          ${wd.word}${wd.checked && isRight ? ' ✓' : ''}
+        </span>
+      </td>`;
+      html += `</tr>`;
+    });
+
+    html += `</table></div>`;
+    return html;
+  }
+
+  function build() {
+    c.innerHTML = `
+    <div class="gtit">🗺️ Map It, Spell It</div>
+    <div class="gsub">Break each word into its phonemes — type one sound per box. Then check!</div>
+
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
+      <div style="font-size:12px;color:var(--txt2)">
+        <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:rgba(78,205,196,.3);border:2px solid var(--teal);vertical-align:middle;margin-right:4px"></span>Filled
+        <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:rgba(34,197,94,.25);border:2px solid var(--green);vertical-align:middle;margin-left:10px;margin-right:4px"></span>Correct
+        <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:rgba(255,107,107,.2);border:2px solid var(--coral);vertical-align:middle;margin-left:10px;margin-right:4px"></span>Check answer
+      </div>
+    </div>
+
+    <div id="ms-grid">${renderGrid()}</div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="gbtn p" onclick="msCheckAll()">Check All ✓</button>
+      <button class="gbtn s" onclick="msShowAnswers()">Show Answers</button>
+      <button class="gbtn s" onclick="msClearAll()">Clear All</button>
+      <button class="gbtn s" onclick="msNewSet()">New Words</button>
+    </div>
+    <div id="ms-fb" style="min-height:40px"></div>
+    <div style="font-size:11px;color:var(--txt2);margin-top:6px">
+      💡 Tip: Press Tab or → to move to the next box. Enter to check the row.
+    </div>`;
+
+    // Focus first cell
+    setTimeout(() => { const el = document.getElementById('ms-0-0'); if(el) el.focus(); }, 80);
+  }
+
+  // Input handler — store value and refresh cell style
+  window.msInput = function(wi, ci, val) {
+    wordData[wi].userInput[ci] = val;
+    wordData[wi].checked = false;
+    // Auto-advance if cell is full (typed expected length)
+    const expected = wordData[wi].segments[ci] || '';
+    if (val.length >= Math.max(1, expected.length)) {
+      // Move to next cell in same row, or first cell of next row
+      const nextCi = ci + 1;
+      const nextEl = document.getElementById('ms-'+wi+'-'+nextCi) ||
+                     document.getElementById('ms-'+(wi+1)+'-0');
+      if (nextEl) nextEl.focus();
+    }
+  };
+
+  // Keyboard navigation
+  window.msNav = function(e, wi, ci, maxCols, maxRows) {
+    if (e.key === 'Enter') { msCheckRow(wi); e.preventDefault(); }
+    else if (e.key === 'Tab' || e.key === 'ArrowRight') {
+      const next = document.getElementById('ms-'+wi+'-'+(ci+1)) ||
+                   document.getElementById('ms-'+(wi+1)+'-0');
+      if (next) { next.focus(); e.preventDefault(); }
+    }
+    else if (e.key === 'ArrowLeft') {
+      const prev = document.getElementById('ms-'+wi+'-'+(ci-1));
+      if (prev) { prev.focus(); e.preventDefault(); }
+    }
+    else if (e.key === 'ArrowDown') {
+      const down = document.getElementById('ms-'+(wi+1)+'-'+ci);
+      if (down) { down.focus(); e.preventDefault(); }
+    }
+    else if (e.key === 'ArrowUp') {
+      const up = document.getElementById('ms-'+(wi-1)+'-'+ci);
+      if (up) { up.focus(); e.preventDefault(); }
+    }
+  };
+
+  window.msRefreshCell = function(wi, ci) {
+    const wd = wordData[wi];
+    const seg = wd.segments[ci];
+    if (!seg) return;
+    const val = (wd.userInput[ci] || '').trim();
+    const el = document.getElementById('ms-'+wi+'-'+ci);
+    if (!el) return;
+    if (wd.checked) {
+      const isRight = val.toLowerCase() === seg.toLowerCase();
+      el.style.background = isRight ? 'rgba(34,197,94,.25)' : 'rgba(255,107,107,.2)';
+      el.style.borderColor = isRight ? 'var(--green)' : 'var(--coral)';
+      el.style.color = isRight ? 'var(--green)' : 'var(--coral)';
+    } else {
+      el.style.background = val ? 'rgba(78,205,196,.18)' : 'rgba(255,255,255,.06)';
+      el.style.borderColor = val ? 'var(--teal)' : 'rgba(255,255,255,.2)';
+      el.style.color = 'var(--txt)';
+    }
+  };
+
+  window.msCheckRow = function(wi) {
+    wordData[wi].checked = true;
+    const wd = wordData[wi];
+    const correct = wd.segments.every((seg, ci) =>
+      (wd.userInput[ci]||'').trim().toLowerCase() === seg.toLowerCase()
+    );
+    wd.correct = correct;
+    // Refresh that row's cells
+    wd.segments.forEach((seg, ci) => msRefreshCell(wi, ci));
+    // Update word label
+    rebuildGrid();
+  };
+
+  window.msCheckAll = function() {
+    let totalCorrect = 0, total = 0;
+    wordData.forEach((wd, wi) => {
+      wd.checked = true;
+      wd.correct = wd.segments.every((seg, ci) =>
+        (wd.userInput[ci]||'').trim().toLowerCase() === seg.toLowerCase()
+      );
+      if (wd.correct) totalCorrect++;
+      total++;
+    });
+    rebuildGrid();
+    const fb = document.getElementById('ms-fb');
+    if (totalCorrect === total) {
+      if (fb) fb.innerHTML = '<div class="gfb ok">🎉 Perfect! All words mapped correctly!</div>';
+      awardStar('mapspell');
+    } else {
+      if (fb) fb.innerHTML = `<div class="gfb ng">${totalCorrect}/${total} words correct — red boxes show where to fix!</div>`;
+    }
+  };
+
+  window.msShowAnswers = function() {
+    wordData.forEach((wd, wi) => {
+      wd.segments.forEach((seg, ci) => {
+        wd.userInput[ci] = seg;
+        const el = document.getElementById('ms-'+wi+'-'+ci);
+        if (el) { el.value = seg; el.style.background='rgba(168,85,247,.2)'; el.style.borderColor='var(--purple)'; el.style.color='var(--purple)'; }
+      });
+    });
+    const fb = document.getElementById('ms-fb');
+    if (fb) fb.innerHTML = '<div style="font-size:13px;color:var(--txt2);padding:8px 0">Answers shown in purple — study them, then try clearing and doing it yourself!</div>';
+  };
+
+  window.msClearAll = function() {
+    wordData.forEach(wd => { wd.userInput = []; wd.checked = false; wd.correct = null; });
+    document.getElementById('ms-fb').innerHTML = '';
+    rebuildGrid();
+    setTimeout(() => { const el = document.getElementById('ms-0-0'); if(el) el.focus(); }, 50);
+  };
+
+  window.msNewSet = function() { gMapSpell(c, words); };
+
+  function rebuildGrid() {
+    const g = document.getElementById('ms-grid');
+    if (g) g.innerHTML = renderGrid();
+  }
+
+  build();
 }
 
 // ── TOAST ──
