@@ -913,8 +913,9 @@ function openPinForAvatar(studentId, group) {
   const students = rosterData[group] || [];
   const st = students.find(s => s.id === studentId);
   if (!st) return;
-  // If student has no PIN set, open avatar directly
-  if (!st.pin) { openAvatarPicker(studentId, group); return; }
+  // If student has no PIN set, go straight to avatar picker (no PIN needed)
+  if (!st.pin) { _realOpenAvatar(studentId, group); return; }
+  // Otherwise show PIN pad
   pinBuffer = '';
   pinTarget = { studentId, group };
   pinCallback = () => _realOpenAvatar(studentId, group);
@@ -981,7 +982,7 @@ function renderRosterAdmin() {
     const list = document.getElementById('rl-'+g); if(!list) return;
     const students = rosterData[g]||[];
     list.innerHTML = students.map(st => `<div class="roster-row">
-      <div class="roster-ava" style="cursor:pointer" onclick="openAvatarPicker('${st.id}','${g}')" title="Change avatar">${st.avatar||st.name.charAt(0)}</div>
+      <div class="roster-ava" style="cursor:pointer;font-size:22px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.08);border-radius:50%;border:2px solid var(--gold)" onclick="_realOpenAvatar('${st.id}','${g}')" title="Click to change avatar">${st.avatar||'🐶'}</div>
       <div class="roster-name">${st.name}</div>
       <div style="display:flex;align-items:center;gap:5px">
         <div style="font-size:10px;color:var(--txt2);font-weight:700">PIN:</div>
@@ -1181,19 +1182,24 @@ async function saveAvatar() {
   rosterData[group] = students;
   if (window._saveRoster) await window._saveRoster(rosterData);
   document.getElementById('av-picker').classList.remove('show');
-  toast('Avatar saved!');
+  toast('Avatar saved! 🎉');
   renderRosterAdmin();
+  renderLoginGrid();
   // Update current student if it's them
   if (currentStudent && currentStudent.id === id) {
     currentStudent.avatar = avSelected;
     renderStudentHeader();
+    renderProgressBlock();
   }
 }
 
-// Public wrapper — checks PIN if student has one (unless admin is unlocked)
+// Public wrapper — admin bypasses PIN, students go through PIN check
 function openAvatarPicker(studentId, group) {
-  if (adminUnlocked) { _realOpenAvatar(studentId, group); return; }
-  openPinForAvatar(studentId, group);
+  if (adminUnlocked) {
+    _realOpenAvatar(studentId, group);
+  } else {
+    openPinForAvatar(studentId, group);
+  }
 }
 
 // ── NAVIGATION ──
@@ -1288,7 +1294,7 @@ function renderProgressBlock() {
         <div style="font-size:12px;color:var(--txt2);margin-top:2px">${stars}/10 stars — ${msg}</div>
       </div>
       <div style="margin-left:auto">
-        <button class="gbtn s" style="font-size:11px;padding:5px 10px" onclick="openAvatarPicker('${currentStudent.id}','${currentStudent.group}')">✏️ Avatar</button>
+        <button class="gbtn s" style="font-size:11px;padding:5px 10px" onclick="openAvatarPicker('${currentStudent.id}','${currentStudent.group}')">✏️ Change Avatar</button>
       </div>
     </div>
     <div class="stars-row">${starsHtml}</div>
