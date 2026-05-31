@@ -2825,4 +2825,44 @@ function gMapSpell(c, words) {
   window.msBlur=function(wi,ci,el){
     var wd=wordData[wi],val=(wd.userInput[ci]||'').trim(),seg=wd.segments[ci]||'';
     if(wd.checked){var ok=val.toLowerCase()===seg.toLowerCase();el.style.background=ok?'rgba(34,197,94,.25)':'rgba(255,107,107,.2)';el.style.borderColor=ok?'var(--green)':'var(--coral)';el.style.color=ok?'var(--green)':'var(--coral)';}
-    else{el.style.background=val?'rgba(78,205,196,
+    else{el.style.background=val?'rgba(78,205,196,.18)':'rgba(255,255,255,.06)';el.style.borderColor=val?'var(--teal)':'rgba(255,255,255,.22)';el.style.color='var(--txt)';}
+  };
+  window.msCheckRow=function(wi){
+    var wd=wordData[wi];wd.checked=true;
+    wd.correct=wd.segments.every(function(seg,ci){return(wd.userInput[ci]||'').trim().toLowerCase()===seg.toLowerCase();});
+    var g=document.getElementById('ms-grid');if(g)g.innerHTML=buildTable();
+  };
+  window.msCheckAll=function(){
+    var ok=0;
+    wordData.forEach(function(wd){wd.checked=true;wd.correct=wd.segments.every(function(seg,ci){return(wd.userInput[ci]||'').trim().toLowerCase()===seg.toLowerCase();});if(wd.correct)ok++;});
+    var g=document.getElementById('ms-grid');if(g)g.innerHTML=buildTable();
+    var fb=document.getElementById('ms-fb');
+    if(ok===wordData.length){if(fb)fb.innerHTML='<div class="gfb ok">Perfect! All words mapped correctly!</div>';awardStar('mapspell');}
+    else{if(fb)fb.innerHTML='<div class="gfb ng">'+ok+'/'+wordData.length+' correct — red boxes need fixing!</div>';}
+  };
+  window.msShow=function(){
+    wordData.forEach(function(wd,wi){wd.segments.forEach(function(seg,ci){wd.userInput[ci]=seg;var el=document.getElementById('ms-'+wi+'-'+ci);if(el){el.value=seg;el.style.background='rgba(168,85,247,.2)';el.style.borderColor='var(--purple)';el.style.color='var(--purple)';}});});
+    var fb=document.getElementById('ms-fb');if(fb)fb.innerHTML='<div style="font-size:13px;color:var(--txt2);padding:8px 0">Answers in purple — study, clear and try yourself!</div>';
+  };
+  window.msClear=function(){
+    wordData.forEach(function(wd){wd.userInput=[];wd.checked=false;wd.correct=null;});
+    var fb=document.getElementById('ms-fb');if(fb)fb.innerHTML='';
+    var g=document.getElementById('ms-grid');if(g)g.innerHTML=buildTable();
+    setTimeout(function(){var el=document.getElementById('ms-0-0');if(el)el.focus();},50);
+  };
+  build();
+}
+
+// ── TOAST ──
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+
+// ── INIT ──
+initStars();
+sbBuildWeeks();
+mkWeekPills('week-pills',(w,b)=>{ S.week=w; attachWeekListener(); refreshAll(); },1);
+sbBuildWeeks();
+document.addEventListener('fbReady', () => { attachWeekListener(); renderLoginGrid(); updateSbWeekHighlights(); });
+document.getElementById('cust-in')?.addEventListener('keydown',e=>{if(e.key==='Enter')addCust();});
+</script>
+</body>
+</html>
